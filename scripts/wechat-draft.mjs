@@ -106,6 +106,7 @@ if (formulaFiles.length !== formulas.length) {
 marked.setOptions({ gfm: true, breaks: false });
 let html = marked.parse(markdown, { async: false });
 html = html
+  .replace(/<li>\s*<p>([\s\S]*?)<\/p>\s*<\/li>/g, "<li>$1</li>")
   .replace(/<a\b[^>]*>([\s\S]*?)<\/a>/g, "$1")
   .replace(/<p>\s*https?:\/\/[^<\s]+\s*<\/p>/g, "")
   .replace(/<hr\s*\/?>/g, "")
@@ -113,12 +114,12 @@ html = html
 
 const accent = "#0b1015";
 const styles = {
-  container: "max-width:677px;margin:0 auto;padding:18px 4px 36px;background:#fff;color:#252927;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei','PingFang SC',sans-serif;font-size:15px;line-height:1.8;word-break:break-word;",
-  h2: `display:table;max-width:calc(100% - 20px);box-sizing:border-box;margin:34px auto 18px;padding:7px 14px;background:${accent};color:#f2f0ea;font-size:18px;line-height:1.5;font-weight:700;text-align:center;border-radius:7px;`,
-  h3: `margin:26px 0 12px;padding:6px 10px;border-left:4px solid ${accent};background:#f3f5f4;color:#202523;font-size:16px;line-height:1.6;font-weight:700;`,
-  p: "margin:1em 0;color:#303633;font-size:15px;line-height:1.85;text-align:justify;letter-spacing:.01em;",
+  container: "max-width:677px;margin:0 auto;padding:18px 4px 36px;background:#fff;color:#252927;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei','PingFang SC',sans-serif;font-size:14px;line-height:1.75;word-break:break-word;",
+  h2: `display:table;max-width:calc(100% - 20px);box-sizing:border-box;margin:34px auto 18px;padding:7px 14px;background:${accent};color:#f2f0ea;font-size:17px;line-height:1.5;font-weight:700;text-align:center;border-radius:7px;`,
+  h3: `margin:26px 0 12px;padding:6px 10px;border-left:4px solid ${accent};background:#f3f5f4;color:#202523;font-size:15px;line-height:1.6;font-weight:700;`,
+  p: "margin:1em 0;color:#303633;font-size:14px;line-height:1.75;text-align:justify;letter-spacing:.01em;",
   blockquote: "margin:16px 0 22px;padding:10px 14px;border-left:3px solid #0b1015;background:#f3f1ec;color:#555b57;font-size:14px;line-height:1.75;",
-  list: "margin:10px 0 18px;padding-left:1.5em;color:#303633;font-size:15px;line-height:1.8;",
+  list: "margin:10px 0 18px;padding-left:1.5em;color:#303633;font-size:14px;line-height:1.75;",
   table: "width:100%;margin:16px auto 24px;border-collapse:collapse;font-size:13px;line-height:1.55;",
   th: `padding:8px 6px;border-bottom:2px solid ${accent};color:${accent};text-align:left;font-weight:700;`,
   td: "padding:8px 6px;border-bottom:1px solid #e2e5e3;color:#303633;text-align:left;vertical-align:top;",
