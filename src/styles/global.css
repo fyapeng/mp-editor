@@ -21,7 +21,9 @@ button, label.button, .toolbar-file { cursor: pointer; }
   padding: .75rem 1.25rem; border-bottom: 1px solid var(--line);
   background: rgba(248, 249, 248, .96); backdrop-filter: blur(12px);
 }
-.brand { min-width: 0; }
+.brand { display: flex; align-items: center; gap: .65rem; min-width: 0; }
+.brand__mark { display: block; width: 40px; height: 40px; flex: 0 0 auto; border-radius: 10px; }
+.brand__copy { min-width: 0; }
 .eyebrow { margin: 0 0 .12rem; color: var(--muted); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; }
 h1 { margin: 0; font-family: "Noto Serif SC", "Songti SC", serif; font-size: 1.2rem; }
 .actions { display: flex; flex-wrap: wrap; gap: .5rem; }

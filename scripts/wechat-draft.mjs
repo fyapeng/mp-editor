@@ -100,7 +100,7 @@ for (const filePath of formulaFiles) {
 marked.setOptions({ gfm: true, breaks: false });
 let html = marked.parse(markdown, { async: false });
 const accent = "#0b1015";
-const divider = `<section style="display:block;margin:16px auto 8px;padding:0;color:${accent};text-align:center;font-size:10px;line-height:1;letter-spacing:1px;opacity:.7;"><span style="display:inline;">——&nbsp;&nbsp;◆&nbsp;&nbsp;——</span></section>`;
+const divider = `<section style="display:block;margin:8px auto 2px;padding:0;color:${accent};text-align:center;font-size:10px;line-height:1;letter-spacing:1px;opacity:.7;"><span style="display:inline;">——&nbsp;&nbsp;◆&nbsp;&nbsp;——</span></section>`;
 html = html
   .replace(/<li>\s*<p>([\s\S]*?)<\/p>\s*<\/li>/g, "<li>$1</li>")
   .replace(/<li>((?:(?!<(?:ul|ol)\b)[\s\S])*?)<\/li>/g, `<li style="margin:5px 0;padding-left:2px;line-height:1.75;"><span style="display:inline;color:inherit;font-size:inherit;line-height:inherit;">$1</span></li>`)

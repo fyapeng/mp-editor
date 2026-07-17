@@ -9,14 +9,21 @@ import "katex/dist/katex.min.css";
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="申椿 MP Editor：面向微信公众号的 Markdown 编辑、公式排版、兼容性检查和草稿上传工具" />
+    <meta name="theme-color" content="#0b1015" />
+    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}brand/mp-editor-mark.svg`} />
+    <link rel="icon" type="image/png" sizes="192x192" href={`${import.meta.env.BASE_URL}brand/mp-editor-icon-192.png`} />
+    <link rel="apple-touch-icon" sizes="180x180" href={`${import.meta.env.BASE_URL}brand/mp-editor-apple-touch-icon.png`} />
     <title>申椿 · MP Editor</title>
   </head>
   <body>
     <main class="shell">
       <header class="topbar">
         <div class="brand">
-          <p class="eyebrow">Markdown for WeChat Official Accounts</p>
-          <h1>申椿 · MP Editor</h1>
+          <img class="brand__mark" src={`${import.meta.env.BASE_URL}brand/mp-editor-mark.svg`} width="40" height="40" alt="" />
+          <div class="brand__copy">
+            <p class="eyebrow">Markdown for WeChat Official Accounts</p>
+            <h1>申椿 · MP Editor</h1>
+          </div>
         </div>
         <div class="actions">
           <label class="button">载入 Markdown<input id="file-input" type="file" accept=".md,.markdown,text/markdown" hidden /></label>
@@ -344,9 +351,14 @@ $$
         applyStyle(preview, "li", "margin:5px 0;padding-left:2px;color:#303633;font-size:14px;line-height:1.75;text-align:justify;");
         applyStyle(preview, ".list-item-content", "display:inline;color:inherit;font-size:inherit;line-height:inherit;");
         applyStyle(preview, "a", `color:${accent};text-decoration:none;border-bottom:1px solid ${accent};`);
-        applyStyle(preview, ".article-divider", "display:block;margin:16px auto 8px;padding:0;text-align:center;font-size:0;line-height:0;");
+        applyStyle(preview, ".article-divider", "display:block;margin:0 auto;padding:0;text-align:center;font-size:0;line-height:1;");
         applyStyle(preview, ".article-divider-line", `display:inline;margin:0 8px;color:${accent};font-size:10px;line-height:1;letter-spacing:-1px;vertical-align:middle;opacity:.7;`);
         applyStyle(preview, ".article-divider-mark", `display:inline-block;color:${accent};font-size:8px;line-height:1;vertical-align:middle;opacity:.8;`);
+        applyStyle(preview, ".article-divider + h2", "margin-top:8px;");
+        preview.querySelectorAll<HTMLElement>(".article-divider").forEach((divider) => {
+          const previous = divider.previousElementSibling as HTMLElement | null;
+          if (previous) previous.style.marginBottom = "0";
+        });
         applyStyle(preview, "code:not(pre code)", "padding:1px 4px;border-radius:3px;background:#f0f2f1;color:#9a3d36;font-family:Consolas,monospace;font-size:13px;");
         applyStyle(preview, "pre", "margin:16px 0;padding:14px 16px;overflow-x:auto;background:#222725;color:#edf1ef;font-size:12px;line-height:1.65;border-radius:4px;white-space:pre-wrap;");
         applyStyle(preview, "img", "display:block;max-width:100%;height:auto;margin:18px auto;border:0;");
@@ -424,7 +436,7 @@ $$
         });
 
         preview.querySelectorAll("hr").forEach((rule) => {
-          const divider = document.createElement("section");
+          const divider = document.createElement("p");
           divider.className = "article-divider";
           const left = document.createElement("span");
           left.className = "article-divider-line";
