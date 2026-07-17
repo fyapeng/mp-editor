@@ -119,3 +119,5 @@ npm run draft -- --input="E:\文章\article.md" --cover="E:\图片\cover.jpg" --
 ### 公式无法编译
 
 确认 `xelatex.exe` 和 `pdftocairo.exe` 可以在终端中运行。只使用网页复制时不需要安装这两个工具。
+
+网页预览使用 KaTeX；复制到公众号时使用 MathJax 生成自包含 SVG，避免公众号清洗 KaTeX 的字体和定位样式后造成公式错位。首次复制公式需要联网加载 MathJax。

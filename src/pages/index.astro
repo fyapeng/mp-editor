@@ -166,6 +166,10 @@ import "katex/dist/katex.min.css";
       const snapshotSelect = $("#snapshot-select") as HTMLSelectElement;
       const STORAGE = "sencium-wechat-editor-v2";
       const SNAPSHOTS = "sencium-wechat-editor-snapshots-v1";
+      const ASSET_SCHEME = "mp-asset://";
+      const ASSET_DB = "sencium-mp-editor-assets";
+      const assetBlobs = new Map<string, Blob>();
+      const assetObjectUrls = new Map<string, string>();
       const themeColors: Record<string, string> = {
         ink: "#0b1015", red: "#8c2f2b", blue: "#164d76", green: "#315f50",
       };
@@ -203,6 +207,74 @@ $$
         return { body: text.slice(match[0].length), fields };
       };
 
+      const openAssetDb = () => new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open(ASSET_DB, 1);
+        request.onupgradeneeded = () => request.result.createObjectStore("assets", { keyPath: "id" });
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+
+      const saveAsset = async (id: string, blob: Blob, name: string) => {
+        const db = await openAssetDb();
+        await new Promise<void>((resolve, reject) => {
+          const transaction = db.transaction("assets", "readwrite");
+          transaction.objectStore("assets").put({ id, blob, name, type: blob.type, updatedAt: Date.now() });
+          transaction.oncomplete = () => resolve();
+          transaction.onerror = () => reject(transaction.error);
+        });
+        db.close();
+        assetBlobs.set(id, blob);
+        if (assetObjectUrls.has(id)) URL.revokeObjectURL(assetObjectUrls.get(id)!);
+        assetObjectUrls.set(id, URL.createObjectURL(blob));
+      };
+
+      const loadAssets = async () => {
+        const db = await openAssetDb();
+        const assets = await new Promise<any[]>((resolve, reject) => {
+          const request = db.transaction("assets", "readonly").objectStore("assets").getAll();
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        db.close();
+        assets.forEach((asset) => {
+          assetBlobs.set(asset.id, asset.blob);
+          assetObjectUrls.set(asset.id, URL.createObjectURL(asset.blob));
+        });
+      };
+
+      const blobToDataUrl = (blob: Blob) => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+
+      const migrateEmbeddedImages = async (markdown: string) => {
+        const matches = [...new Set(markdown.match(/data:image\/[a-zA-Z0-9.+-]+;base64,[a-zA-Z0-9+/=]+/g) || [])];
+        let migrated = markdown;
+        for (const dataUrl of matches) {
+          const id = crypto.randomUUID();
+          const blob = await (await fetch(dataUrl)).blob();
+          await saveAsset(id, blob, `pasted-${id}`);
+          migrated = migrated.replaceAll(dataUrl, `${ASSET_SCHEME}${id}`);
+        }
+        return migrated;
+      };
+
+      const markdownForRender = (markdown: string) => markdown.replace(
+        /mp-asset:\/\/([a-zA-Z0-9-]+)/g,
+        (_, id) => `https://mp-editor.local/assets/${id}`,
+      );
+
+      const markdownForExport = async (markdown: string) => {
+        let exported = markdown;
+        for (const id of [...new Set(markdown.match(/mp-asset:\/\/([a-zA-Z0-9-]+)/g) || [])].map((item) => item.slice(ASSET_SCHEME.length))) {
+          const blob = assetBlobs.get(id);
+          if (blob) exported = exported.replaceAll(`${ASSET_SCHEME}${id}`, await blobToDataUrl(blob));
+        }
+        return exported;
+      };
+
       const applyStyle = (root: HTMLElement, selector: string, cssText: string) => {
         root.querySelectorAll<HTMLElement>(selector).forEach((element) => {
           element.style.cssText = `${element.style.cssText};${cssText}`;
@@ -236,12 +308,13 @@ $$
       };
 
       const render = () => {
-        const { body } = parseFrontmatter(input.value);
+        const { body: sourceBody } = parseFrontmatter(input.value);
+        const body = markdownForRender(sourceBody);
         const blocks: string[] = [];
         const inlines: string[] = [];
         const blockProtected = body.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
           const index = blocks.push(math.trim()) - 1;
-          return `\n<div data-math-block="${index}"></div>\n`;
+          return `\n<section data-math-block="${index}"></section>\n`;
         });
         const mathProtected = blockProtected.replace(/(?<!\\)\$([^$\n]+?)(?<!\\)\$/g, (_, math) => {
           const index = inlines.push(math.trim()) - 1;
@@ -256,6 +329,7 @@ $$
         preview.querySelectorAll<HTMLElement>("[data-math-block]").forEach((node) => {
           const math = blocks[Number(node.dataset.mathBlock)];
           node.className = "formula-block";
+          node.dataset.mathSource = math;
           try {
             katex.render(math, node, { displayMode: true, throwOnError: false, strict: "ignore", output: "htmlAndMathml" });
           } catch {
@@ -265,10 +339,20 @@ $$
         preview.querySelectorAll<HTMLElement>("[data-math-inline]").forEach((node) => {
           const math = inlines[Number(node.dataset.mathInline)];
           node.className = "formula-inline";
+          node.dataset.mathSource = math;
           try {
             katex.render(math, node, { displayMode: false, throwOnError: false, strict: "ignore", output: "htmlAndMathml" });
           } catch {
             node.textContent = math;
+          }
+        });
+
+        preview.querySelectorAll<HTMLImageElement>('img[src^="https://mp-editor.local/assets/"]').forEach((image) => {
+          const id = image.src.split("/").pop() || "";
+          const objectUrl = assetObjectUrls.get(id);
+          if (objectUrl) {
+            image.src = objectUrl;
+            image.dataset.assetId = id;
           }
         });
 
@@ -290,12 +374,18 @@ $$
         }
         applyArticleStyles();
         document.documentElement.style.setProperty("--accent", accentInput.value);
-        captionPreview.textContent = captionInput.value;
+        captionPreview.innerHTML = "";
+        const captionText = document.createElement("span");
+        captionText.textContent = captionInput.value;
+        captionText.style.cssText = "color:#777e7a;font-size:11px;line-height:1.55;font-weight:400;letter-spacing:0;text-align:left;";
+        captionPreview.append(captionText);
+        captionPreview.style.cssText = "display:block;margin:0 0 22px;padding:0;color:#777e7a;font-size:11px;line-height:1.55;text-align:left;";
+        coverPreview.style.cssText = `${coverPreview.style.cssText};display:${coverPreview.classList.contains("is-visible") ? "block" : "none"};width:100%;max-width:677px;height:auto;margin:0 auto 5px;border:0;`;
 
         const headings = [...preview.querySelectorAll("h2, h3")];
         $("#outline").innerHTML = headings.length ? headings.map((heading) => `<li>${heading.textContent}</li>`).join("") : "<li>尚未识别标题</li>";
         const charCount = (preview.textContent || "").replace(/\s+/g, "").length;
-        const linkCount = (body.match(/\[[^\]]+\]\(https?:\/\/[^)]+\)|https?:\/\/\S+/g) || []).length;
+        const linkCount = (sourceBody.match(/\[[^\]]+\]\(https?:\/\/[^)]+\)|https?:\/\/\S+/g) || []).length;
         const imageCount = preview.querySelectorAll("img").length;
         const htmlCount = phone.outerHTML.length;
         $("#char-count").textContent = charCount.toLocaleString("zh-CN");
@@ -357,12 +447,7 @@ $$
         coverPreview.classList.add("is-visible");
       }
 
-      const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
-      });
+      const readFileAsDataUrl = (file: File) => blobToDataUrl(file);
 
       const insertAtCursor = (text: string) => {
         const start = input.selectionStart;
@@ -375,8 +460,9 @@ $$
       const insertImages = async (files: FileList | File[]) => {
         for (const file of Array.from(files)) {
           if (!file.type.startsWith("image/")) continue;
-          const dataUrl = await readFileAsDataUrl(file);
-          insertAtCursor(`\n\n![${file.name.replace(/\.[^.]+$/, "")}](${dataUrl})\n\n`);
+          const id = crypto.randomUUID();
+          await saveAsset(id, file, file.name);
+          insertAtCursor(`\n\n![${file.name.replace(/\.[^.]+$/, "")}](${ASSET_SCHEME}${id})\n\n`);
         }
         showToast("图片已插入正文");
       };
@@ -414,8 +500,19 @@ $$
         render();
       };
 
-      render();
-      refreshSnapshots();
+      const startEditor = async () => {
+        await loadAssets();
+        const migrated = await migrateEmbeddedImages(input.value);
+        if (migrated !== input.value) input.value = migrated;
+        render();
+        refreshSnapshots();
+      };
+      startEditor().catch((error) => {
+        console.error(error);
+        render();
+        refreshSnapshots();
+        showToast("本地图片资源库加载失败，已使用兼容模式");
+      });
 
       [input, titleInput, authorInput, digestInput, sourceInput, captionInput, accentInput, linkModeInput].forEach((element) => element.addEventListener("input", render));
       themeInput.addEventListener("change", () => {
@@ -505,26 +602,85 @@ $$
         link.click();
         setTimeout(() => URL.revokeObjectURL(link.href), 0);
       };
-      $("#download-md").addEventListener("click", () => download(`${titleInput.value || "wechat-article"}.md`, input.value, "text/markdown;charset=utf-8"));
+      $("#download-md").addEventListener("click", async () => download(
+        `${titleInput.value || "wechat-article"}.md`,
+        await markdownForExport(input.value),
+        "text/markdown;charset=utf-8",
+      ));
       $("#download-html").addEventListener("click", () => download(`${titleInput.value || "wechat-article"}.html`, `<!doctype html><meta charset="utf-8">${phone.outerHTML}`, "text/html;charset=utf-8"));
+
+      let mathJaxPromise: Promise<any> | null = null;
+      const ensureMathJax = () => {
+        const active = (window as any).MathJax;
+        if (typeof active?.tex2svg === "function") return Promise.resolve(active);
+        if (mathJaxPromise) return mathJaxPromise;
+        mathJaxPromise = new Promise((resolve, reject) => {
+          (window as any).MathJax = {
+            tex: { tags: "ams" },
+            svg: { fontCache: "none" },
+            startup: { typeset: false },
+          };
+          const script = document.createElement("script");
+          script.src = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js";
+          script.onload = async () => {
+            const mathJax = (window as any).MathJax;
+            await (mathJax.startup?.promise || Promise.resolve());
+            resolve(mathJax);
+          };
+          script.onerror = () => {
+            mathJaxPromise = null;
+            reject(new Error("MathJax 加载失败"));
+          };
+          document.head.append(script);
+        });
+        return mathJaxPromise;
+      };
+
+      const prepareImagesForCopy = async (root: HTMLElement) => {
+        for (const image of root.querySelectorAll<HTMLImageElement>("img[data-asset-id]")) {
+          const blob = assetBlobs.get(image.dataset.assetId || "");
+          if (blob) image.src = await blobToDataUrl(blob);
+          image.removeAttribute("data-asset-id");
+        }
+      };
+
+      const prepareFormulasForCopy = async (root: HTMLElement) => {
+        const formulas = [...root.querySelectorAll<HTMLElement>(".formula-block, .formula-inline")];
+        if (!formulas.length) return;
+        $("#save-status").textContent = "正在生成微信公式…";
+        const mathJax = await ensureMathJax();
+        for (const formula of formulas) {
+          const display = formula.classList.contains("formula-block");
+          const source = formula.dataset.mathSource || "";
+          mathJax.texReset?.();
+          const container = mathJax.tex2svg(source, { display });
+          const svg = container.querySelector("svg") as SVGSVGElement | null;
+          if (!svg) continue;
+          const width = svg.style.minWidth || svg.getAttribute("width") || "";
+          svg.removeAttribute("width");
+          svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+          svg.style.cssText = `display:initial;max-width:300vw;flex-shrink:0;width:${width};height:auto;color:currentColor;`;
+          svg.setAttribute("fill", "currentColor");
+          svg.querySelectorAll("g").forEach((group) => {
+            group.setAttribute("fill", "currentColor");
+            group.setAttribute("stroke", "currentColor");
+          });
+          const wrapper = document.createElement(display ? "section" : "span");
+          wrapper.className = display ? "mp-formula-block" : "mp-formula-inline";
+          wrapper.style.cssText = display
+            ? "box-sizing:border-box;display:block;margin:18px 0 22px;padding:7px 0;overflow-x:auto;overflow-y:hidden;color:#1d2421;text-align:center;font-size:16px;line-height:1.6;"
+            : "display:inline-block;margin:0 2px;color:#1d2421;font-size:1em;line-height:1.2;vertical-align:-0.15em;";
+          wrapper.append(svg);
+          formula.replaceWith(wrapper);
+        }
+      };
 
       const copyRichText = async () => {
         const clone = phone.cloneNode(true) as HTMLElement;
         clone.classList.remove("is-mobile");
         clone.style.cssText = "width:100%;max-width:677px;margin:0 auto;padding:0;background:#fff;color:#242927;";
-        const sourceFormulaNodes = phone.querySelectorAll<HTMLElement>(".formula-block *, .formula-inline *");
-        const cloneFormulaNodes = clone.querySelectorAll<HTMLElement>(".formula-block *, .formula-inline *");
-        const copiedProperties = [
-          "display", "position", "font-family", "font-size", "font-weight", "font-style", "line-height",
-          "letter-spacing", "white-space", "vertical-align", "text-align", "color", "margin", "padding",
-          "border", "top", "left", "right", "bottom", "width", "height", "min-width", "transform", "transform-origin",
-        ];
-        sourceFormulaNodes.forEach((source, index) => {
-          const target = cloneFormulaNodes[index];
-          if (!target) return;
-          const computed = getComputedStyle(source);
-          target.style.cssText += copiedProperties.map((property) => `${property}:${computed.getPropertyValue(property)}`).join(";");
-        });
+        await prepareImagesForCopy(clone);
+        await prepareFormulasForCopy(clone);
         const html = `<section style="width:100%;max-width:677px;margin:0 auto;background:#fff;">${clone.innerHTML}</section>`;
         try {
           await navigator.clipboard.write([new ClipboardItem({
