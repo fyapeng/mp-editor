@@ -45,7 +45,7 @@ const assetBase = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_
             <label class="field"><span>摘要</span><textarea id="digest"></textarea></label>
             <label class="field"><span>阅读原文</span><input id="source-url" type="url" placeholder="https://..." /></label>
             <label class="field"><span>封面图片</span><input id="cover-input" type="file" accept="image/png,image/jpeg,image/webp" /></label>
-            <label class="field"><span>封图说明与来源</span><textarea id="cover-caption">《Drone Attacks in Beirut》，Murat Şengül 摄，Anadolu Agency，2024年9月29日；2025 World Press Photo 获奖作品。</textarea></label>
+            <label class="field"><span>封图说明与来源（可选）</span><textarea id="cover-caption" placeholder="作品名、作者、来源与日期"></textarea></label>
           </section>
 
           <section class="card draft-card" id="draft-card">
@@ -139,10 +139,10 @@ const assetBase = import.meta.env.BASE_URL.endsWith("/") ? import.meta.env.BASE_
           <section class="card">
             <h3>发布前注意</h3>
             <ul class="notes">
-              <li>编辑器用 KaTeX 预览，复制时生成微信兼容 SVG，接口模式可生成公式图片。</li>
+              <li>KaTeX 用于预览；手动复制保留行内矢量公式并生成高清行间公式。</li>
               <li>接口 HTML 体积仅供参考，长度是否可接受以微信接口实际返回结果为准。</li>
               <li>本地或剪贴板图片会嵌入 Markdown，发布前检查清晰度和版权。</li>
-              <li>接口草稿模式仍可按需将公式转图，最终以手机预览为准。</li>
+              <li>接口草稿使用 XeLaTeX 公式图片，首次上传较多公式时需要等待。</li>
             </ul>
           </section>
         </aside>
@@ -471,13 +471,18 @@ $$
         }
         applyArticleStyles();
         document.documentElement.style.setProperty("--accent", accentInput.value);
+        const caption = captionInput.value.trim();
         captionPreview.innerHTML = "";
-        const captionText = document.createElement("span");
-        captionText.textContent = captionInput.value;
-        captionText.style.cssText = "color:#777e7a;font-size:11px;line-height:1.55;font-weight:400;letter-spacing:0;text-align:left;";
-        captionPreview.append(captionText);
-        captionPreview.style.cssText = "display:block;margin:0 0 22px;padding:0;color:#777e7a;font-size:11px;line-height:1.55;text-align:left;";
-        coverPreview.style.cssText = `${coverPreview.style.cssText};display:${coverPreview.classList.contains("is-visible") ? "block" : "none"};width:100%;max-width:677px;height:auto;margin:0 auto 5px;border:0;`;
+        if (caption) {
+          const captionText = document.createElement("span");
+          captionText.textContent = caption;
+          captionText.style.cssText = "color:#777e7a;font-size:11px;line-height:1.55;font-weight:400;letter-spacing:0;text-align:left;";
+          captionPreview.append(captionText);
+        }
+        captionPreview.style.cssText = caption
+          ? "display:block;margin:0 0 22px;padding:0;color:#777e7a;font-size:11px;line-height:1.55;text-align:left;"
+          : "display:none;margin:0;padding:0;";
+        coverPreview.style.cssText = `${coverPreview.style.cssText};display:${coverPreview.classList.contains("is-visible") ? "block" : "none"};width:100%;max-width:677px;height:auto;margin:0 auto ${caption ? "5px" : "22px"};border:0;`;
 
         const headings = [...preview.querySelectorAll("h2")];
         $("#outline").innerHTML = headings.length ? headings.map((heading) => `<li>${heading.textContent}</li>`).join("") : "<li>尚未识别标题</li>";

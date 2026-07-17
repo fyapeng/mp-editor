@@ -48,18 +48,24 @@ h1 { margin: 0; font-family: "Noto Serif SC", "Songti SC", serif; font-size: 1.2
 }
 .panel__head h2 { margin: 0; font-size: .9rem; }
 .sidebar { max-height: calc(100vh - 66px); padding: .85rem; overflow: auto; }
-.card { margin-bottom: .85rem; padding: .8rem; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); }
-.card h3 { margin: 0 0 .65rem; font-size: .84rem; }
+.card { margin-bottom: .75rem; padding: .72rem; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); box-shadow: 0 1px 2px rgba(21, 34, 27, .025); }
+.card h3 { margin: 0 0 .58rem; font-size: .82rem; }
 .card-title-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 .card-title-row h3 { margin: 0; }
 .text-button { border: 0; padding: 0; background: transparent; color: var(--accent); font-size: .75rem; }
-.field { display: block; margin-bottom: .65rem; }
-.field span { display: block; margin-bottom: .25rem; color: var(--muted); font-size: .75rem; }
+.field { display: block; margin-bottom: .58rem; }
+.field span { display: block; margin-bottom: .22rem; color: var(--muted); font-size: .7rem; line-height: 1.35; }
 .field input, .field textarea, .field select, #snapshot-select {
-  width: 100%; border: 1px solid #d5dad7; border-radius: 6px; padding: .5rem .55rem; background: #fff; color: var(--ink);
+  width: 100%; border: 1px solid #d5dad7; border-radius: 6px; padding: .42rem .5rem;
+  background: #fcfdfc; color: var(--ink); font-size: .81rem; line-height: 1.45;
 }
+.field input:focus, .field textarea:focus, .field select:focus, #snapshot-select:focus {
+  outline: 0; border-color: #789b8d; background: #fff; box-shadow: 0 0 0 3px rgba(49, 95, 80, .09);
+}
+.field:focus-within > span { color: #315f50; }
+.field input::placeholder, .field textarea::placeholder { color: #a0a7a3; }
 .field input[type="color"] { min-height: 34px; padding: 3px; }
-.field textarea { min-height: 68px; resize: vertical; }
+.field textarea { min-height: 60px; resize: vertical; }
 .segmented { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; border: 1px solid #d5dad7; border-radius: 6px; }
 .segmented button { border: 0; padding: .4rem; background: #fff; color: var(--muted); font-size: .75rem; }
 .segmented button.is-active { background: var(--accent); color: #fff; }
@@ -143,9 +149,18 @@ h1 { margin: 0; font-family: "Noto Serif SC", "Songti SC", serif; font-size: 1.2
   .preview-wrap { height: auto; min-height: 700px; }
 }
 @media (max-width: 720px) {
-  .topbar { position: static; align-items: flex-start; }
+  .topbar { position: static; align-items: flex-start; padding: .65rem .75rem; }
+  .brand__mark { width: 36px; height: 36px; border-radius: 9px; }
+  .actions { width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+  .actions .button { flex: 0 0 auto; padding: .42rem .62rem; font-size: .76rem; white-space: nowrap; }
   .workspace { display: block; }
   .panel { border-right: 0; border-bottom: 1px solid var(--line); }
+  .sidebar { padding: .6rem; }
+  .card { margin-bottom: .6rem; padding: .68rem; }
   #markdown { min-height: 580px; }
   .phone { padding: 1rem .85rem 2rem; }
+}
+@media (max-width: 520px) {
+  .eyebrow { display: none; }
+  h1 { font-size: 1.05rem; }
 }

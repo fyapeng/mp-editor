@@ -30,7 +30,7 @@ npm run dev
 | 摘要 | 公众号分享摘要；建议控制在 120 字以内 |
 | 阅读原文 | 写入草稿的 `content_source_url` |
 | 封面图片 | 草稿封面，同时可作为正文首图 |
-| 封图说明与来源 | 正文首图下方的小字说明 |
+| 封图说明与来源 | 可选；正文首图下方的小字说明，默认留空 |
 
 Markdown 文件可用 frontmatter 提供部分字段：
 
@@ -136,7 +136,7 @@ npm run draft -- --input="E:\文章\article.md" --cover="E:\图片\cover.jpg" --
 | `--title` | 否 | 覆盖 frontmatter 标题 |
 | `--author` | 否 | 作者 |
 | `--digest` | 否 | 摘要 |
-| `--cover-caption` | 否 | 封图说明 |
+| `--cover-caption` | 否 | 封图说明；留空时不生成图注，也不占用图注间距 |
 | `--source-url` | 否 | 阅读原文地址 |
 
 脚本只写入草稿箱，不会自动群发。写入后仍需在公众号后台检查封面、图片、公式、摘要和手机预览。
@@ -155,4 +155,4 @@ npm run draft -- --input="E:\文章\article.md" --cover="E:\图片\cover.jpg" --
 
 确认 `xelatex.exe` 和 `pdftocairo.exe` 可以在终端中运行。只使用网页复制时不需要安装这两个工具。
 
-网页预览使用 KaTeX；复制到公众号时使用 MathJax 生成自包含 SVG，避免公众号清洗 KaTeX 的字体和定位样式后造成公式错位。首次复制公式需要联网加载 MathJax。
+网页预览使用 KaTeX。手动复制时，行内公式由 MathJax 生成自包含 SVG，行间公式生成高清 PNG；草稿接口使用 XeLaTeX 将行内、行间公式统一渲染为裁边 PNG，并上传为微信托管图片。首次手动复制公式需要联网加载 MathJax，接口首次处理大量公式时也会因为图片上传而耗时更长。

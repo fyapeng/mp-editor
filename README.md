@@ -1,85 +1,128 @@
 # 申椿 · MP Editor
 
-面向微信公众号的 Markdown 编辑、预览与草稿上传工具。它与具体内容项目分离，适合方法文章、随笔和研究札记，也适合把日常 Markdown 文稿整理为公众号富文本。
+<p align="center">
+  <img src="public/brand/mp-editor-mark.svg" width="88" height="88" alt="MP Editor 标识">
+</p>
 
-> Markdown Editor for WeChat Official Accounts
+<p align="center">
+  面向微信公众号的 Markdown 编辑、公式排版、富文本复制与草稿箱写入工具。
+</p>
 
-## 使用文档
+<p align="center">
+  <a href="https://fyapeng.com/mp-editor/"><strong>在线使用</strong></a>
+  ·
+  <a href="docs/configuration.md">配置指南</a>
+  ·
+  <a href="docs/images.md">图片指南</a>
+  ·
+  <a href="docs/local-helper.md">本地助手</a>
+</p>
 
-- [完整配置指南](docs/configuration.md)：环境、公众号参数、文章参数和草稿命令。
-- [正文图片指南](docs/images.md)：本地图片、Data URL、图床和微信图片上传方案。
-- [本地助手指南](docs/local-helper.md)：为什么需要本地助手、当前使用方式与安全边界。
+<p align="center">
+  <a href="https://github.com/fyapeng/mp-editor/actions/workflows/ci.yml"><img src="https://github.com/fyapeng/mp-editor/actions/workflows/ci.yml/badge.svg" alt="Build"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/fyapeng/mp-editor" alt="MIT License"></a>
+</p>
 
-当前版本可以直接编辑、预览和复制公式富文本；草稿脚本已经支持封面和公式上传。任意正文图片自动上传到微信素材库仍在开发中，详见图片指南。
+## 功能概览
 
-运行 `npm run local` 可启动 `127.0.0.1` 本地助手。网页允许每位用户填写自己的 AppID、AppSecret，查询出口 IP，并新增或更新公众号草稿；敏感配置只写入用户本机。
+- Markdown 编辑、KaTeX 实时预览和手机宽度预览；
+- 标题、摘要、作者、阅读原文、封面与可选图注；
+- 四套主题、自由主题色和公众号兼容性检查；
+- 本地图片粘贴、拖入和短资源引用；
+- 浏览器本地保存与最多 20 个手动快照；
+- 复制公众号富文本，导出 Markdown 或 HTML；
+- 通过本地助手新增或更新公众号草稿；
+- AppID、AppSecret、出口 IP 和白名单配置向导。
 
-## 网页编辑器
+## 选择发布方式
+
+| 方式 | 适用场景 | 公式处理 | 公众号凭据 |
+| --- | --- | --- | --- |
+| 手动复制 | 日常排版、进入公众号后台继续调整 | 行内公式使用自包含 SVG，行间公式使用高清 PNG | 不需要 |
+| 草稿接口 | 长文、重复发布、自动写入草稿箱 | XeLaTeX 渲染、裁边后上传为微信托管 PNG | 仅保存在本机 |
+
+两条路径使用同一份 Markdown 和主题设置。正式发布前仍应在公众号后台进行手机预览。
+
+## 最快开始
+
+### 直接使用网页
+
+打开 [fyapeng.com/mp-editor](https://fyapeng.com/mp-editor/)，载入或粘贴 Markdown，完成排版后点击“复制到公众号”。
+
+文稿、设置、图片资源和版本快照保存在浏览器本机。在线网页不会读取公众号密钥。
+
+### 本地运行
+
+需要 Node.js 22 或更高版本：
 
 ```powershell
+git clone https://github.com/fyapeng/mp-editor.git
+Set-Location mp-editor
 npm install
 npm run dev
 ```
 
-打开终端显示的本地地址。编辑器提供：
+### 连接公众号草稿箱
 
-- Markdown 编辑与公众号样式预览；
-- KaTeX 行内、行间公式实时排版；复制时转换为微信兼容的 MathJax SVG；
-- 标题、强调、引用、列表、链接、公式、表格和图片工具栏；
-- 标题、作者、摘要、阅读原文和封图信息；
-- 四套主题、主题色和桌面/手机预览；
-- 自动文章结构、阅读时间与公众号兼容检查；
-- 粘贴或拖入正文图片，图片保存在浏览器 IndexedDB，Markdown 只保留短资源引用；
-- 本地自动保存和最多 20 个手动版本快照；
-- 富文本复制，以及 Markdown、HTML 导出；
-- 外链保留文字、保留链接或转为文末链接三种策略。
-
-手动复制使用浏览器剪贴板写入 `text/html`。草稿接口对长度的实际计数口径不等同于序列化 HTML 的字符数；编辑器只显示 HTML 体积作为参考，不再按固定阈值拦截。长文发布前仍应在后台保存一次并进行手机预览。
-
-## 草稿箱接口
-
-将 `.env.example` 复制为 `.env`，填入微信公众号 AppID 和 AppSecret。调用机器的公网 IP 需要在公众号后台白名单中。
-
-先生成预览：
+草稿接口还需要 XeLaTeX 和 `pdftocairo`。启动本地助手：
 
 ```powershell
-npm run draft -- --input="E:\公众号文章\文章.md" --cover="E:\图片\cover.jpg" --dry-run
+npm run local
+```
+
+打开 `http://127.0.0.1:4399/`，或回到在线网页点击“检测”。随后可以：
+
+1. 填写公众号 AppID 和 AppSecret；
+2. 查询本机公网出口 IP；
+3. 将出口 IP 加入公众号接口白名单；
+4. 先运行“接口预检查”；
+5. 新增草稿，或填写 `media_id` 更新已有草稿。
+
+本地助手只监听 `127.0.0.1`。AppSecret 写入本机 `.env`，不会保存到浏览器或发送到 GitHub Pages。
+
+## 公式与图片
+
+网页使用 KaTeX 进行实时预览。手动复制时，编辑器生成公众号更容易保留的公式结构；接口模式使用 XeLaTeX 生成 300 DPI 图片，自动裁除白边并按正文字号设置显示尺寸。
+
+正文图片可以直接粘贴或拖入编辑器。图片二进制保存在浏览器 IndexedDB，Markdown 只记录 `mp-asset://` 短引用；复制时再还原为剪贴板图片数据。草稿接口对任意正文图片的自动上传仍在完善，详见[图片指南](docs/images.md)。
+
+## 命令行草稿
+
+生成本地预览：
+
+```powershell
+npm run draft -- --input="E:\文章\article.md" --cover="E:\图片\cover.jpg" --dry-run
 ```
 
 新增草稿：
 
 ```powershell
-npm run draft -- --input="E:\公众号文章\文章.md" --cover="E:\图片\cover.jpg" --source-url="https://example.com/article/"
+npm run draft -- --input="E:\文章\article.md" --cover="E:\图片\cover.jpg" --source-url="https://example.com/article/"
 ```
 
-更新已有草稿：
+更新草稿：
 
 ```powershell
-npm run draft -- --input="E:\公众号文章\文章.md" --cover="E:\图片\cover.jpg" --update="MEDIA_ID"
+npm run draft -- --input="E:\文章\article.md" --cover="E:\图片\cover.jpg" --update="MEDIA_ID"
 ```
 
-可选参数包括 `--title`、`--digest`、`--author`、`--cover-caption` 和 `--source-url`。
+完整参数见[配置指南](docs/configuration.md)。
 
-## 两条公式输出路径
+## 数据与安全
 
-- **网页复制**：编辑器用 KaTeX 排版公式，复制时保留公式富文本和必要的行内样式，不强制转图。这是日常使用的默认方式。
-- **草稿接口**：脚本为降低接口环境中的样式丢失风险，短公式转为普通符号，行间公式由 XeLaTeX 排版后转成微信托管 PNG。
+- `.env`、access token 和 AppSecret 不应提交到 Git；
+- Pages 端的配置表单只向 `127.0.0.1` 本地助手发送信息；
+- 草稿操作只写入草稿箱，不会自动群发；
+- 正文外部链接可能被公众号过滤，“阅读原文”使用草稿接口的专用字段；
+- 微信后台会再次清洗 HTML，发布前应检查封面、公式、图片、摘要和手机预览。
 
-两条路径互不冲突。富文本复制以公众号后台实际粘贴效果为准；接口模式适合自动化写入草稿箱。
+## 开发与部署
 
-## 公众号兼容规则
+```powershell
+npm run build
+npm run preview
+```
 
-- 正文外部链接会移除，链接文字保留；网页原文写入底部“阅读原文”。
-- 封图同时上传为草稿封面和正文首图，图注使用小字号。
-- 接口会校验正文长度，但公开说明中的字符口径可能不包含全部 HTML 标签和内联样式。脚本会输出正文文字数、HTML 字符数和字节数作为诊断信息，最终以接口返回结果为准。
-- 草稿接口不会自动发布，仍需在微信公众平台后台预览和确认。
+推送到 `main` 后，GitHub Actions 会运行构建检查并部署 GitHub Pages。自定义部署可通过 `PUBLIC_BASE_PATH` 和 `PUBLIC_SITE_URL` 设置基础路径与站点地址。
 
-## 数据与隐私
-
-- 文稿、封图和版本快照默认保存在浏览器本机，不会上传到本项目的服务器。
-- `.env` 含公众号凭据，已被 Git 忽略。不要把真实 AppID、AppSecret 或草稿 `media_id` 写入公开仓库。
-- 正文图片保存在浏览器本地资源库，复制时才写入剪贴板图片数据。正式发布和跨设备迁移请参阅[正文图片指南](docs/images.md)。
-
-## 公开发布
-
-项目采用 MIT 许可证。推送到 GitHub 后，内置的 GitHub Actions 会在每次提交和拉取请求中安装依赖并执行构建检查。
+项目采用 [MIT License](LICENSE)。

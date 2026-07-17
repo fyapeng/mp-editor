@@ -9,7 +9,10 @@ import sharp from "sharp";
 
 const root = process.cwd();
 const argv = process.argv.slice(2);
-const valueArg = (name, fallback = "") => argv.find((arg) => arg.startsWith(`${name}=`))?.slice(name.length + 1) || fallback;
+const valueArg = (name, fallback = "") => {
+  const argument = argv.find((arg) => arg.startsWith(`${name}=`));
+  return argument === undefined ? fallback : argument.slice(name.length + 1);
+};
 const dryRun = argv.includes("--dry-run");
 const inputPath = path.resolve(valueArg("--input"));
 const coverPath = path.resolve(valueArg("--cover"));
@@ -40,7 +43,7 @@ const field = (name) => frontmatter.match(new RegExp(`^${name}:\\s*["']?(.*?)["'
 const title = valueArg("--title", field("title") || "未命名文章");
 const digest = valueArg("--digest", "从配置与对偶出发，介绍最优运输的数学结构、计算方法及其在经济学中的应用。");
 const sourceUrl = valueArg("--source-url", "https://fyapeng.com/essays/optimal-transport-in-economics/");
-const coverCaption = valueArg("--cover-caption", "《Drone Attacks in Beirut》，Murat Şengül 摄，Anadolu Agency，2024年9月29日；2025 World Press Photo 获奖作品。");
+const coverCaption = valueArg("--cover-caption", "");
 let markdown = source.slice(frontmatterMatch?.[0].length || 0);
 
 const formulas = [];
@@ -228,7 +231,8 @@ if (dryRun) {
   await fs.copyFile(coverPath, path.join(outputDir, previewCoverName));
   bodyCoverUrl = previewCoverName;
 }
-const coverBlock = `<img src="${bodyCoverUrl}" style="${styles.cover}" alt="文章封图"><p style="${styles.caption}">${coverCaption}</p>`;
+const captionBlock = coverCaption.trim() ? `<p style="${styles.caption}">${coverCaption}</p>` : "";
+const coverBlock = `<img src="${bodyCoverUrl}" style="${styles.cover};margin-bottom:${captionBlock ? "5px" : "22px"};" alt="文章封图">${captionBlock}`;
 const namecard = namecardUrl ? `<img src="${namecardUrl}" style="${styles.namecard}" alt="申椿公众号二维码名片">` : "";
 const content = `<section style="${styles.container}">${coverBlock}${html}${namecard}</section>`;
 const textCharacters = content.replace(/<[^>]+>/g, "").replace(/&[a-zA-Z#0-9]+;/g, " ").replace(/\s+/g, "").length;
