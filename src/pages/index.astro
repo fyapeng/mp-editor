@@ -1,0 +1,208 @@
+---
+import "../styles/global.css";
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="独立的微信公众号 Markdown 编辑、兼容性检查和草稿上传工具" />
+    <title>申椿 · 公众号文章编辑器</title>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <p class="eyebrow">Sencium Writing Desk</p>
+          <h1>公众号文章编辑器</h1>
+        </div>
+        <div class="actions">
+          <label class="button">载入 Markdown<input id="file-input" type="file" accept=".md,.markdown,text/markdown" hidden /></label>
+          <button class="button" id="download-md" type="button">导出 Markdown</button>
+          <button class="button" id="download-html" type="button">导出 HTML</button>
+          <button class="button button--primary" id="copy-rich" type="button">复制富文本</button>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <aside class="panel sidebar">
+          <section class="card">
+            <h3>文章设置</h3>
+            <label class="field"><span>标题</span><input id="title" value="未命名文章" /></label>
+            <label class="field"><span>作者</span><input id="author" value="付亚鹏" /></label>
+            <label class="field"><span>摘要</span><textarea id="digest"></textarea></label>
+            <label class="field"><span>阅读原文</span><input id="source-url" type="url" placeholder="https://..." /></label>
+            <label class="field"><span>封面图片</span><input id="cover-input" type="file" accept="image/png,image/jpeg" /></label>
+            <label class="field"><span>封图说明与来源</span><textarea id="cover-caption">《Drone Attacks in Beirut》，Murat Şengül 摄，Anadolu Agency，2024年9月29日；2025 World Press Photo 获奖作品。</textarea></label>
+            <label class="field"><span>主题色</span><input id="accent" type="color" value="#0b1015" /></label>
+          </section>
+
+          <section class="card">
+            <h3>文章结构</h3>
+            <ol class="outline" id="outline"><li>尚未识别标题</li></ol>
+          </section>
+
+          <section class="card">
+            <h3>适配检查</h3>
+            <div class="checks">
+              <div class="check"><span>正文字符</span><strong id="char-count">0</strong></div>
+              <div class="check"><span>外部链接</span><strong id="link-count">0</strong></div>
+              <div class="check"><span>行间公式</span><strong id="formula-count">0</strong></div>
+              <div class="check"><span>标题长度</span><strong id="title-count">0</strong></div>
+            </div>
+          </section>
+
+          <section class="card">
+            <h3>发布前注意</h3>
+            <ul class="notes">
+              <li>短公式使用普通符号；行间公式在接口上传时转换为图片。</li>
+              <li>正文外链会被移除，完整网页放入“阅读原文”。</li>
+              <li>接口正文应少于 2 万字符，上传前先运行 dry-run。</li>
+              <li>封图版权、图注、作者和摘要需人工复核。</li>
+              <li>草稿写入后仍应在公众号后台进行手机预览。</li>
+            </ul>
+          </section>
+        </aside>
+
+        <section class="panel editor">
+          <div class="panel__head"><h2>Markdown</h2><span class="status" id="save-status">本地自动保存</span></div>
+          <textarea id="markdown" spellcheck="true" aria-label="Markdown 正文"></textarea>
+        </section>
+
+        <section class="panel preview-panel">
+          <div class="panel__head"><h2>公众号预览</h2><span class="status">外链已转为普通文字</span></div>
+          <div class="preview-wrap">
+            <article class="phone">
+              <img class="article-cover" id="cover-preview" alt="" />
+              <p class="cover-caption" id="caption-preview"></p>
+              <div class="rich" id="preview"></div>
+            </article>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      import DOMPurify from "dompurify";
+      import { marked } from "marked";
+
+      const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
+      const input = $("#markdown") as HTMLTextAreaElement;
+      const preview = $("#preview");
+      const titleInput = $("#title") as HTMLInputElement;
+      const authorInput = $("#author") as HTMLInputElement;
+      const digestInput = $("#digest") as HTMLTextAreaElement;
+      const sourceInput = $("#source-url") as HTMLInputElement;
+      const captionInput = $("#cover-caption") as HTMLTextAreaElement;
+      const accentInput = $("#accent") as HTMLInputElement;
+      const coverInput = $("#cover-input") as HTMLInputElement;
+      const coverPreview = $("#cover-preview") as HTMLImageElement;
+      const captionPreview = $("#caption-preview");
+      const STORAGE = "sencium-wechat-editor-v1";
+      const initial = `> 在这里写导语。
+
+## 一、第一个问题
+
+正文支持 **强调**、列表、表格和引用。短公式可写成 $W_2$。
+
+$$
+W_2^2(\\mu,\\nu)=\\inf_{\\pi\\in\\Pi(\\mu,\\nu)}\\int d(x,y)^2\\,d\\pi(x,y).
+$$
+
+## 二、结论
+
+完整材料见 **阅读原文**。`;
+
+      const parseFrontmatter = (text: string) => {
+        const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
+        if (!match) return { body: text, fields: {} as Record<string, string> };
+        const fields: Record<string, string> = {};
+        for (const line of match[1].split(/\r?\n/)) {
+          const index = line.indexOf(":");
+          if (index > 0) fields[line.slice(0, index).trim()] = line.slice(index + 1).trim().replace(/^["']|["']$/g, "");
+        }
+        return { body: text.slice(match[0].length), fields };
+      };
+
+      const render = () => {
+        const { body } = parseFrontmatter(input.value);
+        const formulas: string[] = [];
+        const withoutBlocks = body.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
+          const index = formulas.push(math.trim()) - 1;
+          return `<div data-formula="${index}"></div>`;
+        });
+        const withInline = withoutBlocks.replace(/\$([^$\n]+?)\$/g, '<span style="font-family:Georgia,serif;">$1</span>');
+        const clean = DOMPurify.sanitize(marked.parse(withInline, { async: false }) as string, { USE_PROFILES: { html: true } });
+        preview.innerHTML = clean;
+        preview.querySelectorAll("a").forEach((link) => link.replaceWith(document.createTextNode(link.textContent || "")));
+        preview.querySelectorAll<HTMLElement>("[data-formula]").forEach((node) => {
+          const index = Number(node.dataset.formula);
+          node.className = "formula-box";
+          node.innerHTML = `<code>${formulas[index].replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</code><small>接口上传时转为公式图片</small>`;
+        });
+        document.documentElement.style.setProperty("--accent", accentInput.value);
+        captionPreview.textContent = captionInput.value;
+        const headings = [...preview.querySelectorAll("h2, h3")];
+        $("#outline").innerHTML = headings.length ? headings.map((h) => `<li>${h.textContent}</li>`).join("") : "<li>尚未识别标题</li>";
+        const links = (body.match(/https?:\/\/|\[[^\]]+\]\(https?:\/\//g) || []).length;
+        $("#char-count").textContent = String(preview.textContent?.length || 0);
+        $("#link-count").textContent = String(links);
+        $("#formula-count").textContent = String(formulas.length);
+        $("#title-count").textContent = String(titleInput.value.length);
+        $("#char-count").className = (preview.textContent?.length || 0) < 18000 ? "ok" : "warn";
+        $("#link-count").className = links === 0 ? "ok" : "warn";
+        localStorage.setItem(STORAGE, JSON.stringify({
+          markdown: input.value, title: titleInput.value, author: authorInput.value,
+          digest: digestInput.value, source: sourceInput.value, caption: captionInput.value, accent: accentInput.value,
+        }));
+        $("#save-status").textContent = "已保存到本机";
+      };
+
+      const saved = JSON.parse(localStorage.getItem(STORAGE) || "null");
+      input.value = saved?.markdown || initial;
+      titleInput.value = saved?.title || "未命名文章";
+      authorInput.value = saved?.author || "付亚鹏";
+      digestInput.value = saved?.digest || "";
+      sourceInput.value = saved?.source || "";
+      captionInput.value = saved?.caption || captionInput.value;
+      accentInput.value = saved?.accent || "#0b1015";
+      render();
+
+      [input, titleInput, authorInput, digestInput, sourceInput, captionInput, accentInput].forEach((element) => element.addEventListener("input", render));
+      coverInput.addEventListener("change", () => {
+        const file = coverInput.files?.[0];
+        if (!file) return;
+        coverPreview.src = URL.createObjectURL(file);
+        coverPreview.classList.add("is-visible");
+      });
+      $("#file-input").addEventListener("change", async (event) => {
+        const file = (event.currentTarget as HTMLInputElement).files?.[0];
+        if (!file) return;
+        const text = await file.text();
+        const parsed = parseFrontmatter(text);
+        input.value = text;
+        if (parsed.fields.title) titleInput.value = parsed.fields.title;
+        if (parsed.fields.summary) digestInput.value = parsed.fields.summary;
+        render();
+      });
+      const download = (name: string, content: string, type: string) => {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(new Blob([content], { type }));
+        link.download = name;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 0);
+      };
+      $("#download-md").addEventListener("click", () => download("wechat-article.md", input.value, "text/markdown;charset=utf-8"));
+      $("#download-html").addEventListener("click", () => download("wechat-article.html", `<!doctype html><meta charset="utf-8">${$(".phone").outerHTML}`, "text/html;charset=utf-8"));
+      $("#copy-rich").addEventListener("click", async () => {
+        const html = $(".phone").outerHTML;
+        await navigator.clipboard.write([new ClipboardItem({
+          "text/html": new Blob([html], { type: "text/html" }),
+          "text/plain": new Blob([preview.textContent || ""], { type: "text/plain" }),
+        })]);
+        $("#save-status").textContent = "富文本已复制";
+      });
+    </script>
+  </body>
+</html>
