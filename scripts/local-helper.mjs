@@ -96,6 +96,9 @@ const writeEnvValues = async (values) => {
 const runDraft = async (payload) => {
   if (!payload.markdown?.trim()) throw new Error("文章正文为空");
   if (!payload.title?.trim()) throw new Error("文章标题为空");
+  if (!payload.dryRun && /data:image\/[a-zA-Z0-9.+-]+;base64,/.test(payload.markdown)) {
+    throw new Error("检测到正文本地图片。正文图片自动上传到微信的功能尚未完成；可以先执行接口预检查，正式写入前请使用 HTTPS 图片地址或在公众号后台插图。");
+  }
   const cover = decodeImage(payload.coverDataUrl);
   const sessionDir = path.join(outputRoot, new Date().toISOString().replace(/[:.]/g, "-"));
   await fs.mkdir(sessionDir, { recursive: true });
