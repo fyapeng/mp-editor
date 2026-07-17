@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import "katex/dist/katex.min.css";
 ---
 
 <!doctype html>
@@ -7,7 +8,7 @@ import "../styles/global.css";
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="独立的微信公众号 Markdown 编辑、兼容性检查和草稿上传工具" />
+    <meta name="description" content="独立的微信公众号 Markdown 编辑、公式排版、兼容性检查和草稿上传工具" />
     <title>申椿 · 公众号文章编辑器</title>
   </head>
   <body>
@@ -21,7 +22,7 @@ import "../styles/global.css";
           <label class="button">载入 Markdown<input id="file-input" type="file" accept=".md,.markdown,text/markdown" hidden /></label>
           <button class="button" id="download-md" type="button">导出 Markdown</button>
           <button class="button" id="download-html" type="button">导出 HTML</button>
-          <button class="button button--primary" id="copy-rich" type="button">复制富文本</button>
+          <button class="button button--primary" id="copy-rich" type="button">复制到公众号</button>
         </div>
       </header>
 
@@ -33,9 +34,32 @@ import "../styles/global.css";
             <label class="field"><span>作者</span><input id="author" value="付亚鹏" /></label>
             <label class="field"><span>摘要</span><textarea id="digest"></textarea></label>
             <label class="field"><span>阅读原文</span><input id="source-url" type="url" placeholder="https://..." /></label>
-            <label class="field"><span>封面图片</span><input id="cover-input" type="file" accept="image/png,image/jpeg" /></label>
+            <label class="field"><span>封面图片</span><input id="cover-input" type="file" accept="image/png,image/jpeg,image/webp" /></label>
             <label class="field"><span>封图说明与来源</span><textarea id="cover-caption">《Drone Attacks in Beirut》，Murat Şengül 摄，Anadolu Agency，2024年9月29日；2025 World Press Photo 获奖作品。</textarea></label>
-            <label class="field"><span>主题色</span><input id="accent" type="color" value="#0b1015" /></label>
+          </section>
+
+          <section class="card">
+            <h3>版式</h3>
+            <label class="field"><span>主题</span>
+              <select id="theme">
+                <option value="ink">墨黑 · 学术</option>
+                <option value="red">朱砂 · 人文</option>
+                <option value="blue">深蓝 · 清晰</option>
+                <option value="green">松绿 · 素雅</option>
+              </select>
+            </label>
+            <label class="field"><span>自定义主题色</span><input id="accent" type="color" value="#0b1015" /></label>
+            <label class="field"><span>正文外链</span>
+              <select id="link-mode">
+                <option value="text">仅保留文字（推荐）</option>
+                <option value="keep">保留链接</option>
+                <option value="footnote">转为文末链接</option>
+              </select>
+            </label>
+            <div class="segmented" aria-label="预览宽度">
+              <button class="is-active" data-width="desktop" type="button">桌面</button>
+              <button data-width="mobile" type="button">手机</button>
+            </div>
           </section>
 
           <section class="card">
@@ -47,33 +71,67 @@ import "../styles/global.css";
             <h3>适配检查</h3>
             <div class="checks">
               <div class="check"><span>正文字符</span><strong id="char-count">0</strong></div>
+              <div class="check"><span>预计阅读</span><strong id="read-time">0 分钟</strong></div>
+              <div class="check"><span>富文本 HTML</span><strong id="html-count">0</strong></div>
               <div class="check"><span>外部链接</span><strong id="link-count">0</strong></div>
-              <div class="check"><span>行间公式</span><strong id="formula-count">0</strong></div>
-              <div class="check"><span>标题长度</span><strong id="title-count">0</strong></div>
+              <div class="check"><span>行间 / 行内公式</span><strong id="formula-count">0 / 0</strong></div>
+              <div class="check"><span>正文图片</span><strong id="image-count">0</strong></div>
+              <div class="check"><span>标题 / 摘要</span><strong id="meta-count">0 / 0</strong></div>
             </div>
+            <p class="audit-message" id="audit-message"></p>
+          </section>
+
+          <section class="card">
+            <div class="card-title-row">
+              <h3>本地版本</h3>
+              <button class="text-button" id="save-snapshot" type="button">保存快照</button>
+            </div>
+            <select id="snapshot-select" aria-label="历史快照"><option value="">暂无快照</option></select>
+            <button class="button button--wide" id="restore-snapshot" type="button">恢复所选版本</button>
           </section>
 
           <section class="card">
             <h3>发布前注意</h3>
             <ul class="notes">
-              <li>短公式使用普通符号；行间公式在接口上传时转换为图片。</li>
-              <li>正文外链会被移除，完整网页放入“阅读原文”。</li>
-              <li>接口正文应少于 2 万字符，上传前先运行 dry-run。</li>
-              <li>封图版权、图注、作者和摘要需人工复核。</li>
-              <li>草稿写入后仍应在公众号后台进行手机预览。</li>
+              <li>编辑器直接渲染并复制 KaTeX 富文本，不强制生成公式图片。</li>
+              <li>手动复制不经过草稿接口的 HTML 字符限制；公众号后台仍可能执行自身校验。</li>
+              <li>本地或剪贴板图片会嵌入 Markdown，发布前检查清晰度和版权。</li>
+              <li>接口草稿模式仍可按需将公式转图，最终以手机预览为准。</li>
             </ul>
           </section>
         </aside>
 
         <section class="panel editor">
-          <div class="panel__head"><h2>Markdown</h2><span class="status" id="save-status">本地自动保存</span></div>
+          <div class="panel__head">
+            <h2>Markdown</h2>
+            <span class="status" id="save-status">本地自动保存</span>
+          </div>
+          <div class="toolbar" aria-label="Markdown 工具栏">
+            <button data-prefix="## " type="button" title="二级标题">H2</button>
+            <button data-prefix="### " type="button" title="三级标题">H3</button>
+            <button data-wrap="**" type="button" title="加粗"><strong>B</strong></button>
+            <button data-wrap="*" type="button" title="斜体"><em>I</em></button>
+            <button data-prefix="> " type="button" title="引用">❞</button>
+            <button data-prefix="- " type="button" title="无序列表">•</button>
+            <button data-prefix="1. " type="button" title="有序列表">1.</button>
+            <button data-link type="button" title="链接">链接</button>
+            <button data-inline-math type="button" title="行内公式">$x$</button>
+            <button data-block-math type="button" title="行间公式">$$</button>
+            <button data-table type="button" title="表格">表格</button>
+            <button data-divider type="button" title="分隔线">—</button>
+            <label class="toolbar-file" title="插入图片">图片<input id="body-image-input" type="file" accept="image/*" multiple hidden /></label>
+          </div>
           <textarea id="markdown" spellcheck="true" aria-label="Markdown 正文"></textarea>
+          <p class="editor-hint">可直接粘贴或拖入图片。Ctrl/Cmd + S 保存快照，Ctrl/Cmd + Shift + C 复制富文本。</p>
         </section>
 
         <section class="panel preview-panel">
-          <div class="panel__head"><h2>公众号预览</h2><span class="status">外链已转为普通文字</span></div>
+          <div class="panel__head">
+            <h2>公众号预览</h2>
+            <span class="status" id="preview-status">KaTeX 富文本</span>
+          </div>
           <div class="preview-wrap">
-            <article class="phone">
+            <article class="phone" id="phone">
               <img class="article-cover" id="cover-preview" alt="" />
               <p class="cover-caption" id="caption-preview"></p>
               <div class="rich" id="preview"></div>
@@ -83,28 +141,39 @@ import "../styles/global.css";
       </section>
     </main>
 
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
     <script>
       import DOMPurify from "dompurify";
+      import katex from "katex";
       import { marked } from "marked";
 
       const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
       const input = $("#markdown") as HTMLTextAreaElement;
       const preview = $("#preview");
+      const phone = $("#phone");
       const titleInput = $("#title") as HTMLInputElement;
       const authorInput = $("#author") as HTMLInputElement;
       const digestInput = $("#digest") as HTMLTextAreaElement;
       const sourceInput = $("#source-url") as HTMLInputElement;
       const captionInput = $("#cover-caption") as HTMLTextAreaElement;
       const accentInput = $("#accent") as HTMLInputElement;
+      const themeInput = $("#theme") as HTMLSelectElement;
+      const linkModeInput = $("#link-mode") as HTMLSelectElement;
       const coverInput = $("#cover-input") as HTMLInputElement;
       const coverPreview = $("#cover-preview") as HTMLImageElement;
       const captionPreview = $("#caption-preview");
-      const STORAGE = "sencium-wechat-editor-v1";
-      const initial = `> 在这里写导语。
+      const snapshotSelect = $("#snapshot-select") as HTMLSelectElement;
+      const STORAGE = "sencium-wechat-editor-v2";
+      const SNAPSHOTS = "sencium-wechat-editor-snapshots-v1";
+      const themeColors: Record<string, string> = {
+        ink: "#0b1015", red: "#8c2f2b", blue: "#164d76", green: "#315f50",
+      };
+      const initial = `> 在这里写导语。编辑器会直接渲染并复制 KaTeX 公式。
 
 ## 一、第一个问题
 
-正文支持 **强调**、列表、表格和引用。短公式可写成 $W_2$。
+正文支持 **强调**、列表、表格、引用与行内公式 $W_2(\\mu,\\nu)$。
 
 $$
 W_2^2(\\mu,\\nu)=\\inf_{\\pi\\in\\Pi(\\mu,\\nu)}\\int d(x,y)^2\\,d\\pi(x,y).
@@ -113,6 +182,15 @@ $$
 ## 二、结论
 
 完整材料见 **阅读原文**。`;
+
+      marked.setOptions({ gfm: true, breaks: false });
+
+      const showToast = (message: string) => {
+        const toast = $("#toast");
+        toast.textContent = message;
+        toast.classList.add("is-visible");
+        window.setTimeout(() => toast.classList.remove("is-visible"), 2200);
+      };
 
       const parseFrontmatter = (text: string) => {
         const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/);
@@ -125,38 +203,143 @@ $$
         return { body: text.slice(match[0].length), fields };
       };
 
+      const applyStyle = (root: HTMLElement, selector: string, cssText: string) => {
+        root.querySelectorAll<HTMLElement>(selector).forEach((element) => {
+          element.style.cssText = `${element.style.cssText};${cssText}`;
+        });
+      };
+
+      const applyArticleStyles = () => {
+        const accent = accentInput.value;
+        preview.style.cssText = "color:#242927;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',sans-serif;";
+        applyStyle(preview, "h1", `margin:0 auto 26px;padding-bottom:9px;border-bottom:2px solid ${accent};color:#1f2522;text-align:center;font-size:21px;line-height:1.45;font-weight:700;`);
+        applyStyle(preview, "h2", `display:table;margin:32px auto 16px;padding:7px 14px;border-radius:6px;background:${accent};color:#fff;font-size:18px;line-height:1.5;font-weight:700;`);
+        applyStyle(preview, "h3", `margin:26px 0 11px;padding:6px 10px;border-left:4px solid ${accent};background:#f3f5f4;color:#202523;font-size:16px;line-height:1.55;font-weight:700;`);
+        applyStyle(preview, "p", "margin:0 0 16px;color:#303633;font-size:15px;line-height:1.85;text-align:justify;letter-spacing:.02em;");
+        applyStyle(preview, "strong", `color:${accent};font-weight:700;`);
+        applyStyle(preview, "blockquote", `margin:16px 0 20px;padding:11px 14px;border-left:3px solid ${accent};background:#f3f1ec;color:#555b57;`);
+        applyStyle(preview, "blockquote p", "margin:0;color:#555b57;font-size:14px;line-height:1.75;");
+        applyStyle(preview, "ul", "margin:10px 0 18px;padding-left:23px;");
+        applyStyle(preview, "ol", "margin:10px 0 18px;padding-left:25px;");
+        applyStyle(preview, "li", "margin:5px 0;color:#303633;font-size:15px;line-height:1.75;");
+        applyStyle(preview, "a", `color:${accent};text-decoration:none;border-bottom:1px solid ${accent};`);
+        applyStyle(preview, "hr", `margin:28px auto;width:42px;border:0;border-top:2px solid ${accent};`);
+        applyStyle(preview, "code:not(pre code)", "padding:1px 4px;border-radius:3px;background:#f0f2f1;color:#9a3d36;font-family:Consolas,monospace;font-size:13px;");
+        applyStyle(preview, "pre", "margin:16px 0;padding:14px 16px;overflow-x:auto;background:#222725;color:#edf1ef;font-size:12px;line-height:1.65;border-radius:4px;white-space:pre-wrap;");
+        applyStyle(preview, "img", "display:block;max-width:100%;height:auto;margin:18px auto;border:0;");
+        applyStyle(preview, "table", "width:100%;margin:16px auto 24px;border-collapse:collapse;font-size:13px;line-height:1.55;");
+        applyStyle(preview, "th", `padding:8px 6px;border-bottom:2px solid ${accent};color:${accent};text-align:left;font-weight:700;`);
+        applyStyle(preview, "td", "padding:8px 6px;border-bottom:1px solid #e2e5e3;color:#303633;text-align:left;vertical-align:top;");
+        applyStyle(preview, ".formula-block", "margin:19px 0;padding:8px 2px;overflow-x:auto;color:#1d2421;text-align:center;font-size:16px;line-height:1.6;");
+        applyStyle(preview, ".formula-inline", "display:inline-block;margin:0 2px;color:#1d2421;font-size:1em;line-height:1.2;vertical-align:-.15em;");
+        applyStyle(preview, ".link-notes", "margin-top:32px;padding-top:12px;border-top:1px solid #dfe3e0;color:#69706c;font-size:12px;");
+      };
+
       const render = () => {
         const { body } = parseFrontmatter(input.value);
-        const formulas: string[] = [];
-        const withoutBlocks = body.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
-          const index = formulas.push(math.trim()) - 1;
-          return `<div data-formula="${index}"></div>`;
+        const blocks: string[] = [];
+        const inlines: string[] = [];
+        const blockProtected = body.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
+          const index = blocks.push(math.trim()) - 1;
+          return `\n<div data-math-block="${index}"></div>\n`;
         });
-        const withInline = withoutBlocks.replace(/\$([^$\n]+?)\$/g, '<span style="font-family:Georgia,serif;">$1</span>');
-        const clean = DOMPurify.sanitize(marked.parse(withInline, { async: false }) as string, { USE_PROFILES: { html: true } });
+        const mathProtected = blockProtected.replace(/(?<!\\)\$([^$\n]+?)(?<!\\)\$/g, (_, math) => {
+          const index = inlines.push(math.trim()) - 1;
+          return `<span data-math-inline="${index}"></span>`;
+        });
+        const clean = DOMPurify.sanitize(marked.parse(mathProtected, { async: false }) as string, {
+          USE_PROFILES: { html: true },
+          ADD_ATTR: ["data-math-block", "data-math-inline"],
+        });
         preview.innerHTML = clean;
-        preview.querySelectorAll("a").forEach((link) => link.replaceWith(document.createTextNode(link.textContent || "")));
-        preview.querySelectorAll<HTMLElement>("[data-formula]").forEach((node) => {
-          const index = Number(node.dataset.formula);
-          node.className = "formula-box";
-          node.innerHTML = `<code>${formulas[index].replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</code><small>接口上传时转为公式图片</small>`;
+
+        preview.querySelectorAll<HTMLElement>("[data-math-block]").forEach((node) => {
+          const math = blocks[Number(node.dataset.mathBlock)];
+          node.className = "formula-block";
+          try {
+            katex.render(math, node, { displayMode: true, throwOnError: false, strict: "ignore", output: "htmlAndMathml" });
+          } catch {
+            node.textContent = math;
+          }
         });
+        preview.querySelectorAll<HTMLElement>("[data-math-inline]").forEach((node) => {
+          const math = inlines[Number(node.dataset.mathInline)];
+          node.className = "formula-inline";
+          try {
+            katex.render(math, node, { displayMode: false, throwOnError: false, strict: "ignore", output: "htmlAndMathml" });
+          } catch {
+            node.textContent = math;
+          }
+        });
+
+        const externalLinks: { text: string; href: string }[] = [];
+        preview.querySelectorAll<HTMLAnchorElement>("a").forEach((link) => {
+          if (/^https?:/i.test(link.href)) externalLinks.push({ text: link.textContent || link.href, href: link.href });
+          if (linkModeInput.value === "text") link.replaceWith(document.createTextNode(link.textContent || ""));
+          else {
+            link.target = "_blank";
+            link.rel = "noreferrer noopener";
+          }
+        });
+        if (linkModeInput.value === "footnote" && externalLinks.length) {
+          const notes = document.createElement("section");
+          notes.className = "link-notes";
+          notes.innerHTML = `<strong>文中链接</strong><ol>${externalLinks.map((item) => `<li>${DOMPurify.sanitize(item.text)}：${DOMPurify.sanitize(item.href)}</li>`).join("")}</ol>`;
+          preview.append(notes);
+          preview.querySelectorAll("a").forEach((link) => link.replaceWith(document.createTextNode(link.textContent || "")));
+        }
+        applyArticleStyles();
         document.documentElement.style.setProperty("--accent", accentInput.value);
         captionPreview.textContent = captionInput.value;
+
         const headings = [...preview.querySelectorAll("h2, h3")];
-        $("#outline").innerHTML = headings.length ? headings.map((h) => `<li>${h.textContent}</li>`).join("") : "<li>尚未识别标题</li>";
-        const links = (body.match(/https?:\/\/|\[[^\]]+\]\(https?:\/\//g) || []).length;
-        $("#char-count").textContent = String(preview.textContent?.length || 0);
-        $("#link-count").textContent = String(links);
-        $("#formula-count").textContent = String(formulas.length);
-        $("#title-count").textContent = String(titleInput.value.length);
-        $("#char-count").className = (preview.textContent?.length || 0) < 18000 ? "ok" : "warn";
-        $("#link-count").className = links === 0 ? "ok" : "warn";
-        localStorage.setItem(STORAGE, JSON.stringify({
-          markdown: input.value, title: titleInput.value, author: authorInput.value,
-          digest: digestInput.value, source: sourceInput.value, caption: captionInput.value, accent: accentInput.value,
-        }));
-        $("#save-status").textContent = "已保存到本机";
+        $("#outline").innerHTML = headings.length ? headings.map((heading) => `<li>${heading.textContent}</li>`).join("") : "<li>尚未识别标题</li>";
+        const charCount = (preview.textContent || "").replace(/\s+/g, "").length;
+        const linkCount = (body.match(/\[[^\]]+\]\(https?:\/\/[^)]+\)|https?:\/\/\S+/g) || []).length;
+        const imageCount = preview.querySelectorAll("img").length;
+        const htmlCount = phone.outerHTML.length;
+        $("#char-count").textContent = charCount.toLocaleString("zh-CN");
+        $("#read-time").textContent = `${Math.max(1, Math.ceil(charCount / 500))} 分钟`;
+        $("#html-count").textContent = htmlCount.toLocaleString("zh-CN");
+        $("#link-count").textContent = String(linkCount);
+        $("#formula-count").textContent = `${blocks.length} / ${inlines.length}`;
+        $("#image-count").textContent = String(imageCount);
+        $("#meta-count").textContent = `${titleInput.value.length} / ${digestInput.value.length}`;
+        $("#char-count").className = charCount < 18000 ? "ok" : "warn";
+        $("#html-count").className = htmlCount < 20000 ? "ok" : "warn";
+        $("#link-count").className = linkCount === 0 || linkModeInput.value !== "keep" ? "ok" : "warn";
+        $("#meta-count").className = titleInput.value.length <= 64 && digestInput.value.length <= 120 ? "ok" : "warn";
+        const issues = [
+          titleInput.value.length > 64 && "标题超过 64 字",
+          digestInput.value.length > 120 && "摘要超过 120 字",
+          htmlCount >= 20000 && "若走接口，HTML 已接近或超过 2 万字符",
+          linkModeInput.value === "keep" && linkCount > 0 && "公众号可能过滤正文外链",
+        ].filter(Boolean);
+        $("#audit-message").textContent = issues.length ? issues.join("；") : "未发现明显的公众号兼容问题。";
+        saveState();
+      };
+
+      const currentState = () => ({
+        markdown: input.value,
+        title: titleInput.value,
+        author: authorInput.value,
+        digest: digestInput.value,
+        source: sourceInput.value,
+        caption: captionInput.value,
+        accent: accentInput.value,
+        theme: themeInput.value,
+        linkMode: linkModeInput.value,
+        cover: coverPreview.src.startsWith("data:") ? coverPreview.src : "",
+      });
+
+      let saveTimer = 0;
+      const saveState = () => {
+        $("#save-status").textContent = "保存中…";
+        window.clearTimeout(saveTimer);
+        saveTimer = window.setTimeout(() => {
+          localStorage.setItem(STORAGE, JSON.stringify(currentState()));
+          $("#save-status").textContent = "已保存到本机";
+        }, 250);
       };
 
       const saved = JSON.parse(localStorage.getItem(STORAGE) || "null");
@@ -166,15 +349,102 @@ $$
       digestInput.value = saved?.digest || "";
       sourceInput.value = saved?.source || "";
       captionInput.value = saved?.caption || captionInput.value;
-      accentInput.value = saved?.accent || "#0b1015";
-      render();
+      themeInput.value = saved?.theme || "ink";
+      linkModeInput.value = saved?.linkMode || "text";
+      accentInput.value = saved?.accent || themeColors[themeInput.value];
+      if (saved?.cover) {
+        coverPreview.src = saved.cover;
+        coverPreview.classList.add("is-visible");
+      }
 
-      [input, titleInput, authorInput, digestInput, sourceInput, captionInput, accentInput].forEach((element) => element.addEventListener("input", render));
-      coverInput.addEventListener("change", () => {
+      const readFileAsDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+
+      const insertAtCursor = (text: string) => {
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        input.setRangeText(text, start, end, "end");
+        input.focus();
+        input.dispatchEvent(new Event("input"));
+      };
+
+      const insertImages = async (files: FileList | File[]) => {
+        for (const file of Array.from(files)) {
+          if (!file.type.startsWith("image/")) continue;
+          const dataUrl = await readFileAsDataUrl(file);
+          insertAtCursor(`\n\n![${file.name.replace(/\.[^.]+$/, "")}](${dataUrl})\n\n`);
+        }
+        showToast("图片已插入正文");
+      };
+
+      const replaceSelection = (before: string, after = "", fallback = "文本") => {
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const selected = input.value.slice(start, end) || fallback;
+        input.setRangeText(`${before}${selected}${after}`, start, end, "end");
+        input.focus();
+        input.dispatchEvent(new Event("input"));
+      };
+
+      const refreshSnapshots = () => {
+        const snapshots = JSON.parse(localStorage.getItem(SNAPSHOTS) || "[]") as { id: string; label: string; state: ReturnType<typeof currentState> }[];
+        snapshotSelect.innerHTML = snapshots.length
+          ? snapshots.map((item) => `<option value="${item.id}">${item.label}</option>`).join("")
+          : '<option value="">暂无快照</option>';
+      };
+
+      const restoreState = (state: ReturnType<typeof currentState>) => {
+        input.value = state.markdown;
+        titleInput.value = state.title;
+        authorInput.value = state.author;
+        digestInput.value = state.digest;
+        sourceInput.value = state.source;
+        captionInput.value = state.caption;
+        accentInput.value = state.accent;
+        themeInput.value = state.theme;
+        linkModeInput.value = state.linkMode;
+        if (state.cover) {
+          coverPreview.src = state.cover;
+          coverPreview.classList.add("is-visible");
+        }
+        render();
+      };
+
+      render();
+      refreshSnapshots();
+
+      [input, titleInput, authorInput, digestInput, sourceInput, captionInput, accentInput, linkModeInput].forEach((element) => element.addEventListener("input", render));
+      themeInput.addEventListener("change", () => {
+        accentInput.value = themeColors[themeInput.value];
+        render();
+      });
+      coverInput.addEventListener("change", async () => {
         const file = coverInput.files?.[0];
         if (!file) return;
-        coverPreview.src = URL.createObjectURL(file);
+        coverPreview.src = await readFileAsDataUrl(file);
         coverPreview.classList.add("is-visible");
+        render();
+      });
+      $("#body-image-input").addEventListener("change", async (event) => {
+        const files = (event.currentTarget as HTMLInputElement).files;
+        if (files) await insertImages(files);
+      });
+      input.addEventListener("paste", async (event: ClipboardEvent) => {
+        const images = [...(event.clipboardData?.files || [])].filter((file) => file.type.startsWith("image/"));
+        if (!images.length) return;
+        event.preventDefault();
+        await insertImages(images);
+      });
+      input.addEventListener("dragover", (event) => event.preventDefault());
+      input.addEventListener("drop", async (event: DragEvent) => {
+        const images = [...(event.dataTransfer?.files || [])].filter((file) => file.type.startsWith("image/"));
+        if (!images.length) return;
+        event.preventDefault();
+        await insertImages(images);
       });
       $("#file-input").addEventListener("change", async (event) => {
         const file = (event.currentTarget as HTMLInputElement).files?.[0];
@@ -183,9 +453,51 @@ $$
         const parsed = parseFrontmatter(text);
         input.value = text;
         if (parsed.fields.title) titleInput.value = parsed.fields.title;
-        if (parsed.fields.summary) digestInput.value = parsed.fields.summary;
+        if (parsed.fields.author) authorInput.value = parsed.fields.author;
+        if (parsed.fields.summary || parsed.fields.description) digestInput.value = parsed.fields.summary || parsed.fields.description;
         render();
+        showToast(`已载入 ${file.name}`);
       });
+
+      document.querySelectorAll<HTMLButtonElement>("[data-prefix]").forEach((button) => {
+        button.addEventListener("click", () => replaceSelection(button.dataset.prefix || "", "", "内容"));
+      });
+      document.querySelectorAll<HTMLButtonElement>("[data-wrap]").forEach((button) => {
+        button.addEventListener("click", () => replaceSelection(button.dataset.wrap || "", button.dataset.wrap || "", "强调内容"));
+      });
+      $("[data-link]").addEventListener("click", () => replaceSelection("[", "](https://example.com)", "链接文字"));
+      $("[data-inline-math]").addEventListener("click", () => replaceSelection("$", "$", "x"));
+      $("[data-block-math]").addEventListener("click", () => replaceSelection("\n\n$$\n", "\n$$\n\n", "\\int f(x)\\,dx"));
+      $("[data-table]").addEventListener("click", () => insertAtCursor("\n\n| 项目 | 内容 |\n| --- | --- |\n| A | 示例 |\n\n"));
+      $("[data-divider]").addEventListener("click", () => insertAtCursor("\n\n---\n\n"));
+      document.querySelectorAll<HTMLButtonElement>("[data-width]").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll("[data-width]").forEach((item) => item.classList.remove("is-active"));
+          button.classList.add("is-active");
+          phone.classList.toggle("is-mobile", button.dataset.width === "mobile");
+        });
+      });
+
+      $("#save-snapshot").addEventListener("click", () => {
+        const snapshots = JSON.parse(localStorage.getItem(SNAPSHOTS) || "[]");
+        const now = new Date();
+        snapshots.unshift({
+          id: String(now.getTime()),
+          label: `${now.toLocaleString("zh-CN", { hour12: false })} · ${titleInput.value}`,
+          state: currentState(),
+        });
+        localStorage.setItem(SNAPSHOTS, JSON.stringify(snapshots.slice(0, 20)));
+        refreshSnapshots();
+        showToast("已保存本地快照");
+      });
+      $("#restore-snapshot").addEventListener("click", () => {
+        const snapshots = JSON.parse(localStorage.getItem(SNAPSHOTS) || "[]");
+        const selected = snapshots.find((item: { id: string }) => item.id === snapshotSelect.value);
+        if (!selected) return showToast("尚未选择可恢复的快照");
+        restoreState(selected.state);
+        showToast("已恢复所选版本");
+      });
+
       const download = (name: string, content: string, type: string) => {
         const link = document.createElement("a");
         link.href = URL.createObjectURL(new Blob([content], { type }));
@@ -193,15 +505,58 @@ $$
         link.click();
         setTimeout(() => URL.revokeObjectURL(link.href), 0);
       };
-      $("#download-md").addEventListener("click", () => download("wechat-article.md", input.value, "text/markdown;charset=utf-8"));
-      $("#download-html").addEventListener("click", () => download("wechat-article.html", `<!doctype html><meta charset="utf-8">${$(".phone").outerHTML}`, "text/html;charset=utf-8"));
-      $("#copy-rich").addEventListener("click", async () => {
-        const html = $(".phone").outerHTML;
-        await navigator.clipboard.write([new ClipboardItem({
-          "text/html": new Blob([html], { type: "text/html" }),
-          "text/plain": new Blob([preview.textContent || ""], { type: "text/plain" }),
-        })]);
-        $("#save-status").textContent = "富文本已复制";
+      $("#download-md").addEventListener("click", () => download(`${titleInput.value || "wechat-article"}.md`, input.value, "text/markdown;charset=utf-8"));
+      $("#download-html").addEventListener("click", () => download(`${titleInput.value || "wechat-article"}.html`, `<!doctype html><meta charset="utf-8">${phone.outerHTML}`, "text/html;charset=utf-8"));
+
+      const copyRichText = async () => {
+        const clone = phone.cloneNode(true) as HTMLElement;
+        clone.classList.remove("is-mobile");
+        clone.style.cssText = "width:100%;max-width:677px;margin:0 auto;padding:0;background:#fff;color:#242927;";
+        const sourceFormulaNodes = phone.querySelectorAll<HTMLElement>(".formula-block *, .formula-inline *");
+        const cloneFormulaNodes = clone.querySelectorAll<HTMLElement>(".formula-block *, .formula-inline *");
+        const copiedProperties = [
+          "display", "position", "font-family", "font-size", "font-weight", "font-style", "line-height",
+          "letter-spacing", "white-space", "vertical-align", "text-align", "color", "margin", "padding",
+          "border", "top", "left", "right", "bottom", "width", "height", "min-width", "transform", "transform-origin",
+        ];
+        sourceFormulaNodes.forEach((source, index) => {
+          const target = cloneFormulaNodes[index];
+          if (!target) return;
+          const computed = getComputedStyle(source);
+          target.style.cssText += copiedProperties.map((property) => `${property}:${computed.getPropertyValue(property)}`).join(";");
+        });
+        const html = `<section style="width:100%;max-width:677px;margin:0 auto;background:#fff;">${clone.innerHTML}</section>`;
+        try {
+          await navigator.clipboard.write([new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([phone.innerText], { type: "text/plain" }),
+          })]);
+          $("#save-status").textContent = "富文本已复制";
+          showToast("已复制公式富文本，可粘贴到公众号后台");
+        } catch (error) {
+          console.error(error);
+          const selection = window.getSelection();
+          const range = document.createRange();
+          range.selectNodeContents(phone);
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+          document.execCommand("copy");
+          selection?.removeAllRanges();
+          showToast("已通过兼容方式复制富文本");
+        }
+      };
+
+      $("#copy-rich").addEventListener("click", copyRichText);
+      document.addEventListener("keydown", (event) => {
+        if (!(event.ctrlKey || event.metaKey)) return;
+        if (event.key.toLowerCase() === "s") {
+          event.preventDefault();
+          $("#save-snapshot").click();
+        }
+        if (event.shiftKey && event.key.toLowerCase() === "c") {
+          event.preventDefault();
+          copyRichText();
+        }
       });
     </script>
   </body>
