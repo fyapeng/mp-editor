@@ -22,6 +22,7 @@ import "katex/dist/katex.min.css";
           <label class="button">载入 Markdown<input id="file-input" type="file" accept=".md,.markdown,text/markdown" hidden /></label>
           <button class="button" id="download-md" type="button">导出 Markdown</button>
           <button class="button" id="download-html" type="button">导出 HTML</button>
+          <button class="button button--draft" id="open-draft-panel" type="button">公众号草稿箱</button>
           <button class="button button--primary" id="copy-rich" type="button">复制到公众号</button>
         </div>
       </header>
@@ -31,11 +32,47 @@ import "katex/dist/katex.min.css";
           <section class="card">
             <h3>文章设置</h3>
             <label class="field"><span>标题</span><input id="title" value="未命名文章" /></label>
-            <label class="field"><span>作者</span><input id="author" value="付亚鹏" /></label>
+            <label class="field"><span>作者</span><input id="author" value="Sencium" /></label>
             <label class="field"><span>摘要</span><textarea id="digest"></textarea></label>
             <label class="field"><span>阅读原文</span><input id="source-url" type="url" placeholder="https://..." /></label>
             <label class="field"><span>封面图片</span><input id="cover-input" type="file" accept="image/png,image/jpeg,image/webp" /></label>
             <label class="field"><span>封图说明与来源</span><textarea id="cover-caption">《Drone Attacks in Beirut》，Murat Şengül 摄，Anadolu Agency，2024年9月29日；2025 World Press Photo 获奖作品。</textarea></label>
+          </section>
+
+          <section class="card draft-card" id="draft-card">
+            <div class="card-title-row">
+              <h3>公众号草稿箱</h3>
+              <button class="text-button" id="check-helper" type="button">检测</button>
+            </div>
+            <p class="helper-status" id="helper-status"><span></span>尚未检测本地助手</p>
+            <details class="helper-config">
+              <summary>我的公众号配置</summary>
+              <div class="setup-guide">
+                <strong>在哪里找这些信息？</strong>
+                <ol>
+                  <li>登录微信公众平台，进入“设置与开发”。</li>
+                  <li>打开“基本配置”或“开发接口管理”。</li>
+                  <li>复制开发者 ID（AppID），查看或重置开发者密码（AppSecret）。</li>
+                  <li>在“IP 白名单”中点击查看或修改，添加下方查询出的 IPv4 地址。</li>
+                </ol>
+                <a href="https://github.com/fyapeng/mp-editor/blob/main/docs/configuration.md" target="_blank" rel="noreferrer">查看完整配置指南</a>
+              </div>
+              <label class="field"><span>AppID</span><input id="wechat-app-id" autocomplete="off" placeholder="在公众号后台复制" /></label>
+              <label class="field"><span>AppSecret</span><input id="wechat-app-secret" type="password" autocomplete="new-password" placeholder="只写入本机，不会上传 GitHub" /></label>
+              <div class="ip-row">
+                <label class="field"><span>接口出口 IP</span><input id="public-ip" readonly placeholder="由本地助手查询" /></label>
+                <button class="button" id="query-public-ip" type="button" disabled>查询</button>
+              </div>
+              <button class="button button--wide" id="save-wechat-config" type="button" disabled>保存到本机</button>
+              <p class="audit-message">AppID 与 AppSecret 只发送到 127.0.0.1，并写入本机被 Git 忽略的 .env。</p>
+            </details>
+            <label class="field"><span>更新已有草稿（可选 media_id）</span><input id="update-media-id" placeholder="留空则新增草稿" /></label>
+            <div class="helper-actions">
+              <button class="button" id="draft-preview" type="button" disabled>接口预检查</button>
+              <button class="button button--primary" id="draft-submit" type="button" disabled>写入草稿箱</button>
+            </div>
+            <a class="helper-link" id="open-helper" href="http://127.0.0.1:4399/" target="_blank" rel="noreferrer">打开本地发布模式</a>
+            <p class="audit-message" id="helper-detail">Pages 不保存公众号密钥；发布请求由本机助手处理。</p>
           </section>
 
           <section class="card">
@@ -64,7 +101,7 @@ import "katex/dist/katex.min.css";
 
           <section class="card">
             <h3>文章结构</h3>
-            <ol class="outline" id="outline"><li>尚未识别标题</li></ol>
+            <ul class="outline" id="outline"><li>尚未识别标题</li></ul>
           </section>
 
           <section class="card">
@@ -72,7 +109,7 @@ import "katex/dist/katex.min.css";
             <div class="checks">
               <div class="check"><span>正文字符</span><strong id="char-count">0</strong></div>
               <div class="check"><span>预计阅读</span><strong id="read-time">0 分钟</strong></div>
-              <div class="check"><span>富文本 HTML</span><strong id="html-count">0</strong></div>
+              <div class="check"><span>接口 HTML（参考）</span><strong id="html-count">0</strong></div>
               <div class="check"><span>外部链接</span><strong id="link-count">0</strong></div>
               <div class="check"><span>行间 / 行内公式</span><strong id="formula-count">0 / 0</strong></div>
               <div class="check"><span>正文图片</span><strong id="image-count">0</strong></div>
@@ -91,36 +128,10 @@ import "katex/dist/katex.min.css";
           </section>
 
           <section class="card">
-            <div class="card-title-row">
-              <h3>公众号草稿箱</h3>
-              <button class="text-button" id="check-helper" type="button">检测</button>
-            </div>
-            <p class="helper-status" id="helper-status"><span></span>尚未检测本地助手</p>
-            <details class="helper-config">
-              <summary>我的公众号配置</summary>
-              <label class="field"><span>AppID</span><input id="wechat-app-id" autocomplete="off" placeholder="在公众号后台复制" /></label>
-              <label class="field"><span>AppSecret</span><input id="wechat-app-secret" type="password" autocomplete="new-password" placeholder="只写入本机，不会上传 GitHub" /></label>
-              <div class="ip-row">
-                <label class="field"><span>接口出口 IP</span><input id="public-ip" readonly placeholder="由本地助手查询" /></label>
-                <button class="button" id="query-public-ip" type="button" disabled>查询</button>
-              </div>
-              <button class="button button--wide" id="save-wechat-config" type="button" disabled>保存到本机</button>
-              <p class="audit-message">AppID 与 AppSecret 只发送到 127.0.0.1，并写入本机被 Git 忽略的 .env。</p>
-            </details>
-            <label class="field"><span>更新已有草稿（可选 media_id）</span><input id="update-media-id" placeholder="留空则新增草稿" /></label>
-            <div class="helper-actions">
-              <button class="button" id="draft-preview" type="button" disabled>接口预检查</button>
-              <button class="button button--primary" id="draft-submit" type="button" disabled>写入草稿箱</button>
-            </div>
-            <a class="helper-link" id="open-helper" href="http://127.0.0.1:4399/" target="_blank" rel="noreferrer">打开本地发布模式</a>
-            <p class="audit-message" id="helper-detail">Pages 不保存公众号密钥；发布请求由本机助手处理。</p>
-          </section>
-
-          <section class="card">
             <h3>发布前注意</h3>
             <ul class="notes">
-              <li>编辑器直接渲染并复制 KaTeX 富文本，不强制生成公式图片。</li>
-              <li>手动复制不经过草稿接口的 HTML 字符限制；公众号后台仍可能执行自身校验。</li>
+              <li>编辑器用 KaTeX 预览，复制时生成微信兼容 SVG，接口模式可生成公式图片。</li>
+              <li>接口 HTML 体积仅供参考，长度是否可接受以微信接口实际返回结果为准。</li>
               <li>本地或剪贴板图片会嵌入 Markdown，发布前检查清晰度和版权。</li>
               <li>接口草稿模式仍可按需将公式转图，最终以手机预览为准。</li>
             </ul>
@@ -154,7 +165,7 @@ import "katex/dist/katex.min.css";
         <section class="panel preview-panel">
           <div class="panel__head">
             <h2>公众号预览</h2>
-            <span class="status" id="preview-status">KaTeX 富文本</span>
+            <span class="status" id="preview-status">KaTeX 预览</span>
           </div>
           <div class="preview-wrap">
             <article class="phone" id="phone">
@@ -339,7 +350,7 @@ $$
         applyStyle(preview, "table", "width:100%;margin:16px auto 24px;border-collapse:collapse;font-size:13px;line-height:1.55;");
         applyStyle(preview, "th", `padding:8px 6px;border-bottom:2px solid ${accent};color:${accent};text-align:left;font-weight:700;`);
         applyStyle(preview, "td", "padding:8px 6px;border-bottom:1px solid #e2e5e3;color:#303633;text-align:left;vertical-align:top;");
-        applyStyle(preview, ".formula-block", "margin:19px 0;padding:8px 2px;overflow-x:auto;color:#1d2421;text-align:center;font-size:16px;line-height:1.6;");
+        applyStyle(preview, ".formula-block", "margin:0;padding:0;overflow-x:auto;color:#1d2421;text-align:center;font-size:16px;line-height:1.6;");
         applyStyle(preview, ".formula-inline", "display:inline-block;margin:0 2px;color:#1d2421;font-size:1em;line-height:1.2;vertical-align:-.15em;");
         applyStyle(preview, ".link-notes", "margin-top:32px;padding-top:12px;border-top:1px solid #dfe3e0;color:#69706c;font-size:12px;");
       };
@@ -419,7 +430,7 @@ $$
         captionPreview.style.cssText = "display:block;margin:0 0 22px;padding:0;color:#777e7a;font-size:11px;line-height:1.55;text-align:left;";
         coverPreview.style.cssText = `${coverPreview.style.cssText};display:${coverPreview.classList.contains("is-visible") ? "block" : "none"};width:100%;max-width:677px;height:auto;margin:0 auto 5px;border:0;`;
 
-        const headings = [...preview.querySelectorAll("h2, h3")];
+        const headings = [...preview.querySelectorAll("h2")];
         $("#outline").innerHTML = headings.length ? headings.map((heading) => `<li>${heading.textContent}</li>`).join("") : "<li>尚未识别标题</li>";
         const charCount = (preview.textContent || "").replace(/\s+/g, "").length;
         const linkCount = (sourceBody.match(/\[[^\]]+\]\(https?:\/\/[^)]+\)|https?:\/\/\S+/g) || []).length;
@@ -432,14 +443,13 @@ $$
         $("#formula-count").textContent = `${blocks.length} / ${inlines.length}`;
         $("#image-count").textContent = String(imageCount);
         $("#meta-count").textContent = `${titleInput.value.length} / ${digestInput.value.length}`;
-        $("#char-count").className = charCount < 18000 ? "ok" : "warn";
-        $("#html-count").className = htmlCount < 20000 ? "ok" : "warn";
+        $("#char-count").className = "ok";
+        $("#html-count").className = "ok";
         $("#link-count").className = linkCount === 0 || linkModeInput.value !== "keep" ? "ok" : "warn";
         $("#meta-count").className = titleInput.value.length <= 64 && digestInput.value.length <= 120 ? "ok" : "warn";
         const issues = [
           titleInput.value.length > 64 && "标题超过 64 字",
           digestInput.value.length > 120 && "摘要超过 120 字",
-          htmlCount >= 20000 && "若走接口，HTML 已接近或超过 2 万字符",
           linkModeInput.value === "keep" && linkCount > 0 && "公众号可能过滤正文外链",
         ].filter(Boolean);
         $("#audit-message").textContent = issues.length ? issues.join("；") : "未发现明显的公众号兼容问题。";
@@ -472,7 +482,7 @@ $$
       const saved = JSON.parse(localStorage.getItem(STORAGE) || "null");
       input.value = saved?.markdown || initial;
       titleInput.value = saved?.title || "未命名文章";
-      authorInput.value = saved?.author || "付亚鹏";
+      authorInput.value = !saved?.author || saved.author === "付亚鹏" ? "Sencium" : saved.author;
       digestInput.value = saved?.digest || "";
       sourceInput.value = saved?.source || "";
       captionInput.value = saved?.caption || captionInput.value;
@@ -705,7 +715,7 @@ $$
           const wrapper = document.createElement(display ? "section" : "span");
           wrapper.className = display ? "mp-formula-block" : "mp-formula-inline";
           wrapper.style.cssText = display
-            ? "box-sizing:border-box;display:block;margin:10px 0 12px;padding:4px 0;overflow-x:auto;overflow-y:hidden;color:#1d2421;text-align:center;font-size:0;line-height:0;"
+            ? "box-sizing:border-box;display:block;margin:0;padding:0;overflow-x:auto;overflow-y:hidden;color:#1d2421;text-align:center;font-size:0;line-height:0;"
             : "display:inline-block;margin:0 2px;color:#1d2421;font-size:1em;line-height:1.2;vertical-align:-0.15em;";
           wrapper.append(svg);
           formula.replaceWith(wrapper);
@@ -817,6 +827,14 @@ $$
       };
 
       $("#check-helper").addEventListener("click", checkLocalHelper);
+      $("#open-draft-panel").addEventListener("click", () => {
+        const card = $("#draft-card");
+        card.scrollIntoView({ behavior: "smooth", block: "start" });
+        card.classList.remove("is-highlighted");
+        requestAnimationFrame(() => card.classList.add("is-highlighted"));
+        window.setTimeout(() => card.classList.remove("is-highlighted"), 1200);
+        checkLocalHelper();
+      });
       saveWechatConfigButton.addEventListener("click", async () => {
         if (!appIdInput.value.trim() || !appSecretInput.value.trim()) {
           showToast("请完整填写 AppID 和 AppSecret");

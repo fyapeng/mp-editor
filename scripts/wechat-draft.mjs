@@ -122,7 +122,7 @@ const styles = {
   table: "width:100%;margin:16px auto 24px;border-collapse:collapse;font-size:13px;line-height:1.55;",
   th: `padding:8px 6px;border-bottom:2px solid ${accent};color:${accent};text-align:left;font-weight:700;`,
   td: "padding:8px 6px;border-bottom:1px solid #e2e5e3;color:#303633;text-align:left;vertical-align:top;",
-  formula: "display:block;max-width:100%;height:auto;margin:18px auto 22px;border:0;",
+  formula: "display:block;max-width:100%;height:auto;margin:0 auto;border:0;",
   cover: "display:block;width:100%;max-width:677px;height:auto;margin:0 auto 5px;border:0;",
   caption: "margin:0 0 22px;color:#777e7a;font-size:11px;line-height:1.55;text-align:left;",
   namecard: "display:block;width:100%;max-width:677px;height:auto;margin:30px auto 0;border:0;",
@@ -208,15 +208,16 @@ if (dryRun) {
 const coverBlock = `<img src="${bodyCoverUrl}" style="${styles.cover}" alt="文章封图"><p style="${styles.caption}">${coverCaption}</p>`;
 const namecard = namecardUrl ? `<img src="${namecardUrl}" style="${styles.namecard}" alt="申椿公众号二维码名片">` : "";
 const content = `<section style="${styles.container}">${coverBlock}${html}${namecard}</section>`;
+const textCharacters = content.replace(/<[^>]+>/g, "").replace(/&[a-zA-Z#0-9]+;/g, " ").replace(/\s+/g, "").length;
 const previewPath = path.join(outputDir, "wechat-preview.html");
 await fs.writeFile(previewPath, `<!doctype html><meta charset="utf-8"><title>${title}</title>${content}`, "utf8");
-console.log(JSON.stringify({ title, formulas: formulas.length, htmlCharacters: content.length, htmlBytes: Buffer.byteLength(content), previewPath, dryRun }, null, 2));
+console.log(JSON.stringify({ title, formulas: formulas.length, textCharacters, htmlCharacters: content.length, htmlBytes: Buffer.byteLength(content), previewPath, dryRun }, null, 2));
 if (dryRun) process.exit(0);
 
 const article = {
   article_type: "news",
   title,
-  author: valueArg("--author", "付亚鹏"),
+  author: valueArg("--author", "Sencium"),
   digest,
   content,
   content_source_url: sourceUrl,
