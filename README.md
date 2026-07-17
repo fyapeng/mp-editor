@@ -4,6 +4,14 @@
 
 > Markdown Editor for WeChat Official Accounts
 
+## 使用文档
+
+- [完整配置指南](docs/configuration.md)：环境、公众号参数、文章参数和草稿命令。
+- [正文图片指南](docs/images.md)：本地图片、Data URL、图床和微信图片上传方案。
+- [本地助手指南](docs/local-helper.md)：为什么需要本地助手、当前使用方式与安全边界。
+
+当前版本可以直接编辑、预览和复制公式富文本；草稿脚本已经支持封面和公式上传。任意正文图片自动上传到微信素材库仍在开发中，详见图片指南。
+
 ## 网页编辑器
 
 ```powershell
@@ -68,7 +76,7 @@ npm run draft -- --input="E:\公众号文章\文章.md" --cover="E:\图片\cover
 
 - 文稿、封图和版本快照默认保存在浏览器本机，不会上传到本项目的服务器。
 - `.env` 含公众号凭据，已被 Git 忽略。不要把真实 AppID、AppSecret 或草稿 `media_id` 写入公开仓库。
-- 正文图片以 Data URL 嵌入 Markdown，文件会明显变大；公开文章源稿前请检查图片授权和仓库体积。
+- 正文图片目前以 Data URL 嵌入 Markdown，适合预览；公众号是否接收这类图片取决于粘贴环境。正式发布请参阅[正文图片指南](docs/images.md)。
 
 ## 公开发布
 
