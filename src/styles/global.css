@@ -68,6 +68,22 @@ h1 { margin: 0; font-family: "Noto Serif SC", "Songti SC", serif; font-size: 1.2
 .ok { color: #31724b; }
 .warn { color: #a25719; }
 .audit-message { margin: .65rem 0 0; padding-top: .6rem; border-top: 1px solid #edf0ee; color: var(--muted); font-size: .7rem; line-height: 1.5; }
+.helper-status { display: flex; align-items: center; gap: .4rem; margin: .65rem 0; color: var(--muted); font-size: .74rem; }
+.helper-status span { width: 8px; height: 8px; border-radius: 50%; background: #aeb5b1; }
+.helper-status.is-ready { color: #31724b; }
+.helper-status.is-ready span { background: #31724b; box-shadow: 0 0 0 3px rgba(49,114,75,.12); }
+.helper-status.is-error { color: #a25719; }
+.helper-status.is-error span { background: #a25719; }
+.helper-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+.helper-actions .button { padding: .45rem .35rem; font-size: .72rem; }
+.helper-actions .button:disabled { cursor: not-allowed; opacity: .45; }
+.helper-link { display: block; margin-top: .65rem; color: var(--accent); font-size: .73rem; text-align: center; }
+.helper-config { margin: .65rem 0; padding: .55rem; border: 1px solid #e2e6e3; border-radius: 6px; background: #fafbfa; }
+.helper-config summary { cursor: pointer; color: #404844; font-size: .76rem; font-weight: 700; }
+.helper-config[open] summary { margin-bottom: .65rem; }
+.ip-row { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: .4rem; }
+.ip-row .field { margin: 0; }
+.ip-row .button { height: 34px; padding: .35rem .55rem; font-size: .72rem; }
 .notes { margin: 0; padding-left: 1.05rem; color: var(--muted); font-size: .74rem; line-height: 1.58; }
 .editor { display: flex; flex-direction: column; background: #fff; }
 .toolbar {

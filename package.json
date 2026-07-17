@@ -8,6 +8,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "local": "node scripts/local-helper.mjs",
     "draft": "node scripts/wechat-draft.mjs"
   },
   "dependencies": {

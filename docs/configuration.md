@@ -44,7 +44,9 @@ summary: "文章摘要"
 
 ## 三、公众号接口参数
 
-复制 `.env.example` 为 `.env`：
+可以通过网页中的“我的公众号配置”填写 AppID 和 AppSecret。网页只在检测到本地助手后启用保存按钮，信息发送到 `127.0.0.1` 并写入本机 `.env`，不会进入 GitHub Pages 或项目仓库。
+
+也可以手动复制 `.env.example` 为 `.env`：
 
 ```powershell
 Copy-Item .env.example .env
@@ -65,12 +67,45 @@ WECHAT_ONLY_FANS_CAN_COMMENT=0
 | `WECHAT_APP_SECRET` | 字符串 | 公众号 AppSecret |
 | `WECHAT_OPEN_COMMENT` | `0` / `1` | 是否开启评论 |
 | `WECHAT_ONLY_FANS_CAN_COMMENT` | `0` / `1` | 是否仅允许关注者评论 |
+| `LOCAL_HELPER_PORT` | 端口号 | 本地助手端口，默认 `4399` |
+| `LOCAL_ALLOWED_ORIGINS` | 逗号分隔网址 | 允许调用本地助手的 Pages 来源；其他部署者应填写自己的域名 |
 
 公众号后台还需要把运行草稿脚本的公网出口 IP 加入接口 IP 白名单。家庭宽带公网 IP 发生变化后，可能需要重新配置。
 
-请勿把 `.env` 提交到 GitHub，也不要把 AppSecret 填入 GitHub Pages、浏览器 localStorage 或公开截图。
+请勿把 `.env` 提交到 GitHub，也不要把 AppSecret 保存到浏览器 localStorage 或公开截图。Pages 上的配置表单只有连接并授权本地助手后才可提交，目标地址固定为 `127.0.0.1`。
+
+### 在哪里找到 AppID 和 AppSecret
+
+1. 登录微信公众平台。
+2. 打开“设置与开发”下的“基本配置”或“开发接口管理”。后台菜单名称可能随版本调整。
+3. 复制开发者 ID（AppID）。
+4. 查看或重置开发者密码（AppSecret）。重置后旧 Secret 会失效，应立即更新本地配置。
+
+MP Editor 不会从公众号后台自动读取这两个值，也不会在保存后把完整 Secret 回显到网页。
+
+### 怎样找到出口 IP
+
+启动本地助手后，在网页的“我的公众号配置”中点击“查询”。查询由本机助手主动访问公网 IP 服务完成，返回的是运行接口请求时通常使用的公网出口地址。
+
+查询按钮会依次尝试公共 IP 查询服务，只传递网络请求自然携带的来源 IP，不传递 AppID、AppSecret 或文章内容。
+
+也可以在 PowerShell 中手动查询：
+
+```powershell
+Invoke-RestMethod https://api.ipify.org
+```
+
+把结果填写到微信公众平台的接口 IP 白名单。如果使用公司网络、VPN、代理或动态家庭宽带，实际接口出口可能变化；遇到 IP 白名单错误时应重新查询。
 
 ## 四、生成和写入草稿
+
+启动带接口能力的本地网页：
+
+```powershell
+npm run local
+```
+
+然后打开 `http://127.0.0.1:4399/`。在线 Pages 也可以检测本地助手；只有当前网页来源被本地助手允许时，配置和草稿按钮才会启用。
 
 先执行只生成本地预览的检查：
 

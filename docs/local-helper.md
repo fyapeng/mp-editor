@@ -14,12 +14,31 @@ GitHub Pages 是静态网页，适合 Markdown 编辑、KaTeX 预览和富文本
 
 ## 二、当前版本
 
-当前本地能力由项目中的命令行草稿脚本提供：
+当前版本已经提供第一版浏览器本地助手：
 
 ```powershell
 npm install
-npm run draft -- --input="文章.md" --cover="cover.jpg" --dry-run
+npm run local
 ```
+
+然后打开 `http://127.0.0.1:4399/`。页面可以：
+
+- 检测本地助手和公众号配置；
+- 由用户填写自己的 AppID 与 AppSecret；
+- 把配置写入本机 `.env`；
+- 查询本机公网出口 IP；
+- 生成接口预览；
+- 新增草稿或按 `media_id` 更新草稿。
+
+配置不会上传到本项目、GitHub Pages 或其他服务器。AppSecret 不保存在浏览器 localStorage，也不会通过状态接口回显。
+
+如果自行部署 Pages，需要在本机 `.env` 中设置：
+
+```dotenv
+LOCAL_ALLOWED_ORIGINS=https://your-domain.example
+```
+
+多个来源使用英文逗号分隔。本地助手默认只监听 `127.0.0.1`；来源许可不会让它向局域网开放端口。
 
 下载项目有两种方式：
 
@@ -30,9 +49,9 @@ npm run draft -- --input="文章.md" --cover="cover.jpg" --dry-run
 git clone https://github.com/fyapeng/mp-editor.git
 ```
 
-当前尚未提供独立的 `.exe` 或图形化安装包。封面、公式和草稿写入已经可用；任意正文图片上传仍在开发中。
+当前尚未提供独立的 `.exe` 安装包。封面、公式和草稿写入已经可用；任意正文图片上传仍在开发中。
 
-## 三、计划中的可下载助手
+## 三、计划中的独立安装包
 
 后续 GitHub Releases 可以提供：
 

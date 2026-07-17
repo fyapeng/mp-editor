@@ -91,6 +91,32 @@ import "katex/dist/katex.min.css";
           </section>
 
           <section class="card">
+            <div class="card-title-row">
+              <h3>公众号草稿箱</h3>
+              <button class="text-button" id="check-helper" type="button">检测</button>
+            </div>
+            <p class="helper-status" id="helper-status"><span></span>尚未检测本地助手</p>
+            <details class="helper-config">
+              <summary>我的公众号配置</summary>
+              <label class="field"><span>AppID</span><input id="wechat-app-id" autocomplete="off" placeholder="在公众号后台复制" /></label>
+              <label class="field"><span>AppSecret</span><input id="wechat-app-secret" type="password" autocomplete="new-password" placeholder="只写入本机，不会上传 GitHub" /></label>
+              <div class="ip-row">
+                <label class="field"><span>接口出口 IP</span><input id="public-ip" readonly placeholder="由本地助手查询" /></label>
+                <button class="button" id="query-public-ip" type="button" disabled>查询</button>
+              </div>
+              <button class="button button--wide" id="save-wechat-config" type="button" disabled>保存到本机</button>
+              <p class="audit-message">AppID 与 AppSecret 只发送到 127.0.0.1，并写入本机被 Git 忽略的 .env。</p>
+            </details>
+            <label class="field"><span>更新已有草稿（可选 media_id）</span><input id="update-media-id" placeholder="留空则新增草稿" /></label>
+            <div class="helper-actions">
+              <button class="button" id="draft-preview" type="button" disabled>接口预检查</button>
+              <button class="button button--primary" id="draft-submit" type="button" disabled>写入草稿箱</button>
+            </div>
+            <a class="helper-link" id="open-helper" href="http://127.0.0.1:4399/" target="_blank" rel="noreferrer">打开本地发布模式</a>
+            <p class="audit-message" id="helper-detail">Pages 不保存公众号密钥；发布请求由本机助手处理。</p>
+          </section>
+
+          <section class="card">
             <h3>发布前注意</h3>
             <ul class="notes">
               <li>编辑器直接渲染并复制 KaTeX 富文本，不强制生成公式图片。</li>
@@ -164,6 +190,17 @@ import "katex/dist/katex.min.css";
       const coverPreview = $("#cover-preview") as HTMLImageElement;
       const captionPreview = $("#caption-preview");
       const snapshotSelect = $("#snapshot-select") as HTMLSelectElement;
+      const helperStatus = $("#helper-status");
+      const helperDetail = $("#helper-detail");
+      const helperPreviewButton = $("#draft-preview") as HTMLButtonElement;
+      const helperSubmitButton = $("#draft-submit") as HTMLButtonElement;
+      const updateMediaInput = $("#update-media-id") as HTMLInputElement;
+      const appIdInput = $("#wechat-app-id") as HTMLInputElement;
+      const appSecretInput = $("#wechat-app-secret") as HTMLInputElement;
+      const publicIpInput = $("#public-ip") as HTMLInputElement;
+      const saveWechatConfigButton = $("#save-wechat-config") as HTMLButtonElement;
+      const queryPublicIpButton = $("#query-public-ip") as HTMLButtonElement;
+      const HELPER_URL = "http://127.0.0.1:4399";
       const STORAGE = "sencium-wechat-editor-v2";
       const SNAPSHOTS = "sencium-wechat-editor-snapshots-v1";
       const ASSET_SCHEME = "mp-asset://";
@@ -659,7 +696,7 @@ $$
           const width = svg.style.minWidth || svg.getAttribute("width") || "";
           svg.removeAttribute("width");
           svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-          svg.style.cssText = `display:initial;max-width:300vw;flex-shrink:0;width:${width};height:auto;color:currentColor;`;
+          svg.style.cssText = `display:initial;max-width:300vw;flex-shrink:0;width:${width};color:currentColor;`;
           svg.setAttribute("fill", "currentColor");
           svg.querySelectorAll("g").forEach((group) => {
             group.setAttribute("fill", "currentColor");
@@ -668,7 +705,7 @@ $$
           const wrapper = document.createElement(display ? "section" : "span");
           wrapper.className = display ? "mp-formula-block" : "mp-formula-inline";
           wrapper.style.cssText = display
-            ? "box-sizing:border-box;display:block;margin:18px 0 22px;padding:7px 0;overflow-x:auto;overflow-y:hidden;color:#1d2421;text-align:center;font-size:16px;line-height:1.6;"
+            ? "box-sizing:border-box;display:block;margin:10px 0 12px;padding:4px 0;overflow-x:auto;overflow-y:hidden;color:#1d2421;text-align:center;font-size:0;line-height:0;"
             : "display:inline-block;margin:0 2px;color:#1d2421;font-size:1em;line-height:1.2;vertical-align:-0.15em;";
           wrapper.append(svg);
           formula.replaceWith(wrapper);
@@ -703,6 +740,130 @@ $$
       };
 
       $("#copy-rich").addEventListener("click", copyRichText);
+
+      const setHelperState = (state: "idle" | "ready" | "error", message: string, detail: string, enabled = false) => {
+        helperStatus.className = `helper-status${state === "ready" ? " is-ready" : state === "error" ? " is-error" : ""}`;
+        helperStatus.innerHTML = `<span></span>${message}`;
+        helperDetail.textContent = detail;
+        helperPreviewButton.disabled = !enabled;
+        helperSubmitButton.disabled = !enabled;
+      };
+
+      const checkLocalHelper = async () => {
+        setHelperState("idle", "正在检测本地助手…", "检查 127.0.0.1:4399");
+        try {
+          const response = await fetch(`${HELPER_URL}/api/status`, { mode: "cors" });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const status = await response.json();
+          saveWechatConfigButton.disabled = !status.originAllowed;
+          queryPublicIpButton.disabled = !status.originAllowed;
+          if (status.appIdHint) appIdInput.placeholder = `已配置：${status.appIdHint}`;
+          if (!status.configured) {
+            setHelperState("error", "已连接，但公众号尚未配置", "请在本地项目的 .env 中填写 WECHAT_APP_ID 和 WECHAT_APP_SECRET。");
+            return status;
+          }
+          const allowed = status.originAllowed || location.origin === HELPER_URL;
+          setHelperState(
+            allowed ? "ready" : "error",
+            allowed ? "本地助手已就绪" : "本地助手未授权当前网页",
+            allowed ? `公众号 AppID：${status.appIdHint}` : `请把 ${location.origin} 加入 LOCAL_ALLOWED_ORIGINS。`,
+            allowed,
+          );
+          return status;
+        } catch (error) {
+          console.error(error);
+          setHelperState("error", "未发现本地助手", "先下载项目并运行 npm run local，然后重新检测。");
+          return null;
+        }
+      };
+
+      const sendDraftRequest = async (dryRun: boolean) => {
+        if (!coverPreview.src || !coverPreview.classList.contains("is-visible")) {
+          showToast("请先选择草稿封面图片");
+          return;
+        }
+        const action = dryRun ? "执行接口预检查" : updateMediaInput.value.trim() ? "更新已有草稿" : "新增公众号草稿";
+        if (!dryRun && !window.confirm(`确认${action}《${titleInput.value}》？操作只写入草稿箱，不会群发。`)) return;
+        helperPreviewButton.disabled = true;
+        helperSubmitButton.disabled = true;
+        setHelperState("idle", dryRun ? "正在生成本地预览…" : "正在写入公众号草稿箱…", "公式编译和图片上传可能需要一些时间。");
+        try {
+          const markdown = await markdownForExport(input.value);
+          const response = await fetch(`${HELPER_URL}/api/draft`, {
+            method: "POST",
+            mode: "cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              dryRun,
+              markdown,
+              coverDataUrl: coverPreview.src,
+              title: titleInput.value,
+              author: authorInput.value,
+              digest: digestInput.value,
+              sourceUrl: sourceInput.value,
+              coverCaption: captionInput.value,
+              updateMediaId: updateMediaInput.value.trim(),
+            }),
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.error || `HTTP ${response.status}`);
+          if (result.mediaId) updateMediaInput.value = result.mediaId;
+          setHelperState("ready", dryRun ? "本地预检查完成" : "草稿箱写入成功", result.message, true);
+          showToast(dryRun ? "预检查完成，请查看本地 output 目录" : "草稿已写入，请到公众号后台预览");
+        } catch (error) {
+          console.error(error);
+          setHelperState("error", "草稿操作失败", error instanceof Error ? error.message : String(error), true);
+        }
+      };
+
+      $("#check-helper").addEventListener("click", checkLocalHelper);
+      saveWechatConfigButton.addEventListener("click", async () => {
+        if (!appIdInput.value.trim() || !appSecretInput.value.trim()) {
+          showToast("请完整填写 AppID 和 AppSecret");
+          return;
+        }
+        saveWechatConfigButton.disabled = true;
+        try {
+          const response = await fetch(`${HELPER_URL}/api/config`, {
+            method: "POST",
+            mode: "cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              appId: appIdInput.value.trim(),
+              appSecret: appSecretInput.value.trim(),
+            }),
+          });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.error || `HTTP ${response.status}`);
+          appSecretInput.value = "";
+          appIdInput.value = "";
+          showToast("公众号配置已保存到本机");
+          await checkLocalHelper();
+        } catch (error) {
+          showToast(error instanceof Error ? error.message : String(error));
+          saveWechatConfigButton.disabled = false;
+        }
+      });
+      queryPublicIpButton.addEventListener("click", async () => {
+        queryPublicIpButton.disabled = true;
+        publicIpInput.value = "查询中…";
+        try {
+          const response = await fetch(`${HELPER_URL}/api/public-ip`, { mode: "cors" });
+          const result = await response.json();
+          if (!response.ok || !result.ok) throw new Error(result.error || `HTTP ${response.status}`);
+          publicIpInput.value = result.ip;
+          showToast("请把该 IP 加入公众号接口白名单");
+        } catch (error) {
+          publicIpInput.value = "";
+          showToast(error instanceof Error ? error.message : String(error));
+        } finally {
+          queryPublicIpButton.disabled = false;
+        }
+      });
+      helperPreviewButton.addEventListener("click", () => sendDraftRequest(true));
+      helperSubmitButton.addEventListener("click", () => sendDraftRequest(false));
+      window.setTimeout(checkLocalHelper, 600);
+
       document.addEventListener("keydown", (event) => {
         if (!(event.ctrlKey || event.metaKey)) return;
         if (event.key.toLowerCase() === "s") {
