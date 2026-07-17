@@ -4,6 +4,8 @@ import path from "node:path";
 import process from "node:process";
 import { spawnSync } from "node:child_process";
 import { marked } from "marked";
+import { parse } from "node-html-parser";
+import sharp from "sharp";
 
 const root = process.cwd();
 const argv = process.argv.slice(2);
@@ -43,32 +45,14 @@ let markdown = source.slice(frontmatterMatch?.[0].length || 0);
 
 const formulas = [];
 markdown = markdown.replace(/\$\$([\s\S]*?)\$\$/g, (_, formula) => {
-  const index = formulas.push(formula.trim()) - 1;
+  const index = formulas.push({ source: formula.trim(), display: true }) - 1;
   return `\n<div data-wechat-formula="${index}"></div>\n`;
 });
 
-const inlineSymbols = new Map([
-  ["\\mu", "μ"], ["\\nu", "ν"], ["\\pi", "π"], ["\\varphi", "φ"], ["\\phi", "φ"],
-  ["\\psi", "ψ"], ["\\theta", "θ"], ["\\varepsilon", "ε"], ["\\rho", "ρ"],
-  ["\\Sigma", "Σ"], ["\\tau", "τ"], ["\\ell", "ℓ"], ["\\in", "∈"],
-  ["\\ge", "≥"], ["\\le", "≤"], ["\\ne", "≠"], ["\\times", "×"], ["\\to", "→"],
-  ["\\infty", "∞"], ["\\partial", "∂"], ["\\nabla", "∇"], ["\\mathbb E", "E"],
-]);
-const inlineMath = (raw) => {
-  let text = raw;
-  for (const [from, to] of inlineSymbols) text = text.replaceAll(from, to);
-  text = text
-    .replace(/\\operatorname\{([^}]+)\}/g, "$1")
-    .replace(/\\mathcal\{([^}]+)\}/g, "$1")
-    .replace(/\\mathbb\{([^}]+)\}/g, "$1")
-    .replace(/\\#|\\,/g, "")
-    .replace(/\\([A-Za-z]+)/g, "$1")
-    .replace(/[{}]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return `<span style="font-family:Georgia,'Times New Roman',serif;color:#252927;white-space:nowrap;">${text}</span>`;
-};
-markdown = markdown.replace(/\$([^$\n]+?)\$/g, (_, formula) => inlineMath(formula));
+markdown = markdown.replace(/\$([^$\n]+?)\$/g, (_, formula) => {
+  const index = formulas.push({ source: formula.trim(), display: false }) - 1;
+  return `<span data-wechat-inline-formula="${index}"></span>`;
+});
 
 const texEscape = (formula) => formula.replaceAll("\\#", "\\#");
 const tex = String.raw`\documentclass{article}
@@ -76,12 +60,10 @@ const tex = String.raw`\documentclass{article}
 \usepackage{amsmath,amssymb,mathtools}
 \usepackage{xeCJK}
 \setCJKmainfont{Microsoft YaHei}
-\setlength\PreviewBorder{10pt}
+\setlength\PreviewBorder{0pt}
 \begin{document}
 ${formulas.map((formula) => String.raw`\begin{preview}
-\[
-${texEscape(formula)}
-\]
+${formula.display ? String.raw`{\Large \(\displaystyle ${texEscape(formula.source)}\)}` : String.raw`\(${texEscape(formula.source)}\)`}
 \end{preview}`).join("\n")}
 \end{document}
 `;
@@ -93,7 +75,8 @@ for (const name of await fs.readdir(formulaDir)) {
 const pdflatex = spawnSync("xelatex.exe", ["-interaction=nonstopmode", "-halt-on-error", `-output-directory=${formulaDir}`, texPath], { encoding: "utf8" });
 if (pdflatex.status !== 0) throw new Error(`公式编译失败：\n${pdflatex.stdout}\n${pdflatex.stderr}`);
 const pdfPath = path.join(formulaDir, "formulas.pdf");
-const cairo = spawnSync("pdftocairo.exe", ["-png", "-r", "180", pdfPath, path.join(formulaDir, "formula")], { encoding: "utf8" });
+const formulaDpi = 300;
+const cairo = spawnSync("pdftocairo.exe", ["-png", "-r", String(formulaDpi), pdfPath, path.join(formulaDir, "formula")], { encoding: "utf8" });
 if (cairo.status !== 0) throw new Error(`公式转图片失败：\n${cairo.stdout}\n${cairo.stderr}`);
 const formulaFiles = (await fs.readdir(formulaDir))
   .filter((name) => /^formula-\d+\.png$/.test(name))
@@ -102,11 +85,22 @@ const formulaFiles = (await fs.readdir(formulaDir))
 if (formulaFiles.length !== formulas.length) {
   throw new Error(`公式页数不一致：解析 ${formulas.length} 个，渲染 ${formulaFiles.length} 个`);
 }
+const formulaMeta = [];
+for (const filePath of formulaFiles) {
+  const cropped = await sharp(filePath)
+    .trim({ background: "#ffffff", threshold: 12 })
+    .extend({ top: 8, bottom: 8, left: 10, right: 10, background: "#ffffff" })
+    .png()
+    .toBuffer();
+  await fs.writeFile(filePath, cropped);
+  const metadata = await sharp(cropped).metadata();
+  formulaMeta.push({ width: metadata.width || 1, height: metadata.height || 1 });
+}
 
 marked.setOptions({ gfm: true, breaks: false });
 let html = marked.parse(markdown, { async: false });
 const accent = "#0b1015";
-const divider = `<section style="display:block;margin:29px auto 27px;padding:0;text-align:center;font-size:0;line-height:0;"><span style="display:inline-block;width:34px;margin:0 9px;border-top:1px solid ${accent};vertical-align:middle;opacity:.55;"></span><span style="display:inline-block;color:${accent};font-size:8px;line-height:1;vertical-align:middle;opacity:.8;">◆</span><span style="display:inline-block;width:34px;margin:0 9px;border-top:1px solid ${accent};vertical-align:middle;opacity:.55;"></span></section>`;
+const divider = `<section style="display:block;margin:16px auto 8px;padding:0;color:${accent};text-align:center;font-size:10px;line-height:1;letter-spacing:1px;opacity:.7;"><span style="display:inline;">——&nbsp;&nbsp;◆&nbsp;&nbsp;——</span></section>`;
 html = html
   .replace(/<li>\s*<p>([\s\S]*?)<\/p>\s*<\/li>/g, "<li>$1</li>")
   .replace(/<li>((?:(?!<(?:ul|ol)\b)[\s\S])*?)<\/li>/g, `<li style="margin:5px 0;padding-left:2px;line-height:1.75;"><span style="display:inline;color:inherit;font-size:inherit;line-height:inherit;">$1</span></li>`)
@@ -125,7 +119,6 @@ const styles = {
   table: "width:100%;margin:16px auto 24px;border-collapse:collapse;font-size:13px;line-height:1.55;",
   th: `padding:8px 6px;border-bottom:2px solid ${accent};color:${accent};text-align:left;font-weight:700;`,
   td: "padding:8px 6px;border-bottom:1px solid #e2e5e3;color:#303633;text-align:left;vertical-align:top;",
-  formula: "display:block;max-width:100%;height:auto;margin:0 auto;border:0;",
   cover: "display:block;width:100%;max-width:677px;height:auto;margin:0 auto 5px;border:0;",
   caption: "margin:0 0 22px;color:#777e7a;font-size:11px;line-height:1.55;text-align:left;",
   namecard: "display:block;width:100%;max-width:677px;height:auto;margin:30px auto 0;border:0;",
@@ -140,6 +133,20 @@ html = html
   .replace(/<table(\s[^>]*)?>/g, `<table style="${styles.table}">`)
   .replace(/<th(\s[^>]*)?>/g, `<th style="${styles.th}">`)
   .replace(/<td(\s[^>]*)?>/g, `<td style="${styles.td}">`);
+
+const htmlRoot = parse(html);
+const nativeLists = htmlRoot.querySelectorAll("ol, ul").reverse();
+for (const list of nativeLists) {
+  const ordered = list.rawTagName.toLowerCase() === "ol";
+  const start = Number.parseInt(list.getAttribute("start") || "1", 10);
+  const items = list.childNodes.filter((node) => node.rawTagName?.toLowerCase() === "li");
+  const rows = items.map((item, index) => {
+    const marker = ordered ? `${start + index}.` : "•";
+    return `<p style="display:block;margin:5px 0;padding:0 0 0 1.8em;color:#303633;font-size:14px;line-height:1.75;text-align:justify;text-indent:-1.8em;"><span style="display:inline-block;width:1.8em;color:inherit;text-align:right;text-indent:0;vertical-align:top;">${marker}&nbsp;</span><span style="display:inline;color:inherit;font-size:inherit;line-height:inherit;text-indent:0;">${item.innerHTML}</span></p>`;
+  });
+  list.replaceWith(rows.join(""));
+}
+html = htmlRoot.toString();
 
 const assertApi = async (response, action) => {
   const data = await response.json();
@@ -177,7 +184,19 @@ for (let index = 0; index < formulaFiles.length; index += 1) {
   }
   formulaUrls.push(dryRun ? `formulas/${path.basename(filePath)}` : cache.formulas[hash]);
 }
-html = html.replace(/<div data-wechat-formula="(\d+)"><\/div>/g, (_, index) => `<img src="${formulaUrls[Number(index)]}" style="${styles.formula}" alt="公式">`);
+const formulaImage = (index, display) => {
+  const metadata = formulaMeta[index];
+  const width = Math.max(1, Math.round(metadata.width * 96 / formulaDpi));
+  const height = Math.max(1, Math.round(metadata.height * 96 / formulaDpi));
+  const src = formulaUrls[index];
+  if (display) {
+    return `<img src="${src}" width="${width}" height="${height}" style="display:block;width:${width}px;max-width:100%;height:auto;margin:0 auto;padding:0;border:0;" alt="公式">`;
+  }
+  return `<img src="${src}" width="${width}" height="${height}" style="display:inline-block;width:${width}px;height:${height}px;margin:0 1px;padding:0;border:0;vertical-align:-0.28em;" alt="公式">`;
+};
+html = html
+  .replace(/<div data-wechat-formula="(\d+)"><\/div>/g, (_, index) => formulaImage(Number(index), true))
+  .replace(/<span data-wechat-inline-formula="(\d+)"><\/span>/g, (_, index) => formulaImage(Number(index), false));
 
 let coverMediaId = cache.coverMediaId || "";
 let bodyCoverUrl = cache.bodyCoverUrl || "";

@@ -344,8 +344,8 @@ $$
         applyStyle(preview, "li", "margin:5px 0;padding-left:2px;color:#303633;font-size:14px;line-height:1.75;text-align:justify;");
         applyStyle(preview, ".list-item-content", "display:inline;color:inherit;font-size:inherit;line-height:inherit;");
         applyStyle(preview, "a", `color:${accent};text-decoration:none;border-bottom:1px solid ${accent};`);
-        applyStyle(preview, ".article-divider", "display:block;margin:29px auto 27px;padding:0;text-align:center;font-size:0;line-height:0;");
-        applyStyle(preview, ".article-divider-line", `display:inline-block;width:34px;margin:0 9px;border-top:1px solid ${accent};vertical-align:middle;opacity:.55;`);
+        applyStyle(preview, ".article-divider", "display:block;margin:16px auto 8px;padding:0;text-align:center;font-size:0;line-height:0;");
+        applyStyle(preview, ".article-divider-line", `display:inline;margin:0 8px;color:${accent};font-size:10px;line-height:1;letter-spacing:-1px;vertical-align:middle;opacity:.7;`);
         applyStyle(preview, ".article-divider-mark", `display:inline-block;color:${accent};font-size:8px;line-height:1;vertical-align:middle;opacity:.8;`);
         applyStyle(preview, "code:not(pre code)", "padding:1px 4px;border-radius:3px;background:#f0f2f1;color:#9a3d36;font-family:Consolas,monospace;font-size:13px;");
         applyStyle(preview, "pre", "margin:16px 0;padding:14px 16px;overflow-x:auto;background:#222725;color:#edf1ef;font-size:12px;line-height:1.65;border-radius:4px;white-space:pre-wrap;");
@@ -428,11 +428,13 @@ $$
           divider.className = "article-divider";
           const left = document.createElement("span");
           left.className = "article-divider-line";
+          left.textContent = "——";
           const mark = document.createElement("span");
           mark.className = "article-divider-mark";
           mark.textContent = "◆";
           const right = document.createElement("span");
           right.className = "article-divider-line";
+          right.textContent = "——";
           divider.append(left, mark, right);
           rule.replaceWith(divider);
         });
