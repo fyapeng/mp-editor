@@ -332,18 +332,21 @@ $$
       const applyArticleStyles = () => {
         const accent = accentInput.value;
         preview.style.cssText = "color:#242927;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',sans-serif;font-size:14px;line-height:1.75;";
-        applyStyle(preview, "h1", `margin:0 auto 26px;padding-bottom:9px;border-bottom:2px solid ${accent};color:#1f2522;text-align:center;font-size:21px;line-height:1.45;font-weight:700;`);
+        applyStyle(preview, "h1", `display:table;max-width:calc(100% - 24px);box-sizing:border-box;margin:0 auto 26px;padding:0 4px 7px;border-bottom:2px solid ${accent};color:#1f2522;text-align:center;font-size:21px;line-height:1.45;font-weight:700;`);
         applyStyle(preview, "h2", `display:table;margin:32px auto 16px;padding:7px 14px;border-radius:6px;background:${accent};color:#fff;font-size:17px;line-height:1.5;font-weight:700;`);
         applyStyle(preview, "h3", `margin:26px 0 11px;padding:6px 10px;border-left:4px solid ${accent};background:#f3f5f4;color:#202523;font-size:15px;line-height:1.55;font-weight:700;`);
         applyStyle(preview, "p", "margin:0 0 14px;color:#303633;font-size:14px;line-height:1.75;text-align:justify;letter-spacing:.01em;");
-        applyStyle(preview, "strong", `color:${accent};font-weight:700;`);
+        applyStyle(preview, "strong", `display:inline;color:${accent};font-weight:700;`);
         applyStyle(preview, "blockquote", `margin:16px 0 20px;padding:11px 14px;border-left:3px solid ${accent};background:#f3f1ec;color:#555b57;`);
         applyStyle(preview, "blockquote p", "margin:0;color:#555b57;font-size:14px;line-height:1.75;");
         applyStyle(preview, "ul", "margin:10px 0 18px;padding-left:23px;");
         applyStyle(preview, "ol", "margin:10px 0 18px;padding-left:25px;");
         applyStyle(preview, "li", "margin:5px 0;padding-left:2px;color:#303633;font-size:14px;line-height:1.75;text-align:justify;");
+        applyStyle(preview, ".list-item-content", "display:inline;color:inherit;font-size:inherit;line-height:inherit;");
         applyStyle(preview, "a", `color:${accent};text-decoration:none;border-bottom:1px solid ${accent};`);
-        applyStyle(preview, "hr", `margin:28px auto;width:42px;border:0;border-top:2px solid ${accent};`);
+        applyStyle(preview, ".article-divider", "display:block;margin:29px auto 27px;padding:0;text-align:center;font-size:0;line-height:0;");
+        applyStyle(preview, ".article-divider-line", `display:inline-block;width:34px;margin:0 9px;border-top:1px solid ${accent};vertical-align:middle;opacity:.55;`);
+        applyStyle(preview, ".article-divider-mark", `display:inline-block;color:${accent};font-size:8px;line-height:1;vertical-align:middle;opacity:.8;`);
         applyStyle(preview, "code:not(pre code)", "padding:1px 4px;border-radius:3px;background:#f0f2f1;color:#9a3d36;font-family:Consolas,monospace;font-size:13px;");
         applyStyle(preview, "pre", "margin:16px 0;padding:14px 16px;overflow-x:auto;background:#222725;color:#edf1ef;font-size:12px;line-height:1.65;border-radius:4px;white-space:pre-wrap;");
         applyStyle(preview, "img", "display:block;max-width:100%;height:auto;margin:18px auto;border:0;");
@@ -411,6 +414,27 @@ $$
             while (paragraph.firstChild) item.insertBefore(paragraph.firstChild, paragraph);
             paragraph.remove();
           });
+          const hasNestedList = [...item.children].some((child) => child.tagName === "UL" || child.tagName === "OL");
+          if (!hasNestedList) {
+            const content = document.createElement("span");
+            content.className = "list-item-content";
+            while (item.firstChild) content.append(item.firstChild);
+            item.append(content);
+          }
+        });
+
+        preview.querySelectorAll("hr").forEach((rule) => {
+          const divider = document.createElement("section");
+          divider.className = "article-divider";
+          const left = document.createElement("span");
+          left.className = "article-divider-line";
+          const mark = document.createElement("span");
+          mark.className = "article-divider-mark";
+          mark.textContent = "◆";
+          const right = document.createElement("span");
+          right.className = "article-divider-line";
+          divider.append(left, mark, right);
+          rule.replaceWith(divider);
         });
 
         const externalLinks: { text: string; href: string }[] = [];
@@ -700,6 +724,50 @@ $$
         }
       };
 
+      const svgToPngDataUrl = async (svg: SVGSVGElement) => {
+        const parseEx = (value: string | null, fallback: number) => {
+          const number = Number.parseFloat(value || "");
+          return Number.isFinite(number) ? number * 9 : fallback;
+        };
+        const viewBox = (svg.getAttribute("viewBox") || "").trim().split(/\s+/).map(Number);
+        const ratio = viewBox.length === 4 && viewBox[2] > 0 && viewBox[3] > 0 ? viewBox[2] / viewBox[3] : 3;
+        let cssHeight = parseEx(svg.getAttribute("height"), 28);
+        let cssWidth = parseEx(svg.getAttribute("width"), cssHeight * ratio);
+        if (cssWidth > 620) {
+          cssHeight *= 620 / cssWidth;
+          cssWidth = 620;
+        }
+        cssWidth = Math.max(24, Math.ceil(cssWidth));
+        cssHeight = Math.max(18, Math.ceil(cssHeight));
+        const scale = 3;
+        const copy = svg.cloneNode(true) as SVGSVGElement;
+        copy.setAttribute("width", String(cssWidth * scale));
+        copy.setAttribute("height", String(cssHeight * scale));
+        copy.style.cssText = "display:block;color:#1d2421;background:transparent;";
+        copy.setAttribute("fill", "#1d2421");
+        copy.querySelectorAll("g").forEach((group) => {
+          group.setAttribute("fill", "#1d2421");
+          group.setAttribute("stroke", "#1d2421");
+        });
+        const source = new XMLSerializer().serializeToString(copy);
+        const url = URL.createObjectURL(new Blob([source], { type: "image/svg+xml;charset=utf-8" }));
+        try {
+          const image = new Image();
+          image.decoding = "async";
+          image.src = url;
+          await image.decode();
+          const canvas = document.createElement("canvas");
+          canvas.width = cssWidth * scale;
+          canvas.height = cssHeight * scale;
+          const context = canvas.getContext("2d");
+          if (!context) throw new Error("无法创建公式画布");
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          return { dataUrl: canvas.toDataURL("image/png"), width: cssWidth, height: cssHeight };
+        } finally {
+          URL.revokeObjectURL(url);
+        }
+      };
+
       const prepareFormulasForCopy = async (root: HTMLElement) => {
         const formulas = [...root.querySelectorAll<HTMLElement>(".formula-block, .formula-inline")];
         if (!formulas.length) return;
@@ -712,6 +780,17 @@ $$
           const container = mathJax.tex2svg(source, { display });
           const svg = container.querySelector("svg") as SVGSVGElement | null;
           if (!svg) continue;
+          if (display) {
+            const png = await svgToPngDataUrl(svg);
+            const image = document.createElement("img");
+            image.src = png.dataUrl;
+            image.alt = "公式";
+            image.width = png.width;
+            image.height = png.height;
+            image.style.cssText = `display:block;width:${png.width}px;max-width:100%;height:auto;margin:0 auto;padding:0;border:0;`;
+            formula.replaceWith(image);
+            continue;
+          }
           const width = svg.style.minWidth || svg.getAttribute("width") || "";
           svg.removeAttribute("width");
           svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");

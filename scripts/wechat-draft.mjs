@@ -105,14 +105,16 @@ if (formulaFiles.length !== formulas.length) {
 
 marked.setOptions({ gfm: true, breaks: false });
 let html = marked.parse(markdown, { async: false });
+const accent = "#0b1015";
+const divider = `<section style="display:block;margin:29px auto 27px;padding:0;text-align:center;font-size:0;line-height:0;"><span style="display:inline-block;width:34px;margin:0 9px;border-top:1px solid ${accent};vertical-align:middle;opacity:.55;"></span><span style="display:inline-block;color:${accent};font-size:8px;line-height:1;vertical-align:middle;opacity:.8;">◆</span><span style="display:inline-block;width:34px;margin:0 9px;border-top:1px solid ${accent};vertical-align:middle;opacity:.55;"></span></section>`;
 html = html
   .replace(/<li>\s*<p>([\s\S]*?)<\/p>\s*<\/li>/g, "<li>$1</li>")
+  .replace(/<li>((?:(?!<(?:ul|ol)\b)[\s\S])*?)<\/li>/g, `<li style="margin:5px 0;padding-left:2px;line-height:1.75;"><span style="display:inline;color:inherit;font-size:inherit;line-height:inherit;">$1</span></li>`)
   .replace(/<a\b[^>]*>([\s\S]*?)<\/a>/g, "$1")
   .replace(/<p>\s*https?:\/\/[^<\s]+\s*<\/p>/g, "")
-  .replace(/<hr\s*\/?>/g, "")
+  .replace(/<hr\s*\/?>/g, divider)
   .replace(/<h1>[\s\S]*?<\/h1>/, "");
 
-const accent = "#0b1015";
 const styles = {
   container: "max-width:677px;margin:0 auto;padding:18px 4px 36px;background:#fff;color:#252927;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei','PingFang SC',sans-serif;font-size:14px;line-height:1.75;word-break:break-word;",
   h2: `display:table;max-width:calc(100% - 20px);box-sizing:border-box;margin:34px auto 18px;padding:7px 14px;background:${accent};color:#f2f0ea;font-size:17px;line-height:1.5;font-weight:700;text-align:center;border-radius:7px;`,
@@ -134,6 +136,7 @@ html = html
   .replace(/<p(\s[^>]*)?>/g, `<p style="${styles.p}">`)
   .replace(/<blockquote(\s[^>]*)?>/g, `<blockquote style="${styles.blockquote}">`)
   .replace(/<(ul|ol)(\s[^>]*)?>/g, `<$1 style="${styles.list}">`)
+  .replace(/<strong(\s[^>]*)?>/g, `<strong style="display:inline;color:${accent};font-weight:700;">`)
   .replace(/<table(\s[^>]*)?>/g, `<table style="${styles.table}">`)
   .replace(/<th(\s[^>]*)?>/g, `<th style="${styles.th}">`)
   .replace(/<td(\s[^>]*)?>/g, `<td style="${styles.td}">`);
