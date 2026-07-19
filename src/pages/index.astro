@@ -361,7 +361,7 @@ $$
           const previous = divider.previousElementSibling as HTMLElement | null;
           if (previous) previous.style.marginBottom = "0";
         });
-        applyStyle(preview, "code:not(pre code)", "padding:1px 4px;border-radius:3px;background:#f0f2f1;color:#9a3d36;font-family:Consolas,monospace;font-size:13px;");
+        applyStyle(preview, ".inline-code", "display:inline;padding:1px 4px;border-radius:3px;background:#f0f2f1;color:#9a3d36;font-family:Consolas,'Courier New',monospace;font-size:13px;line-height:inherit;word-break:break-word;");
         applyStyle(preview, "pre", "margin:16px 0;padding:14px 16px;overflow-x:auto;background:#222725;color:#edf1ef;font-size:12px;line-height:1.65;border-radius:4px;white-space:pre-wrap;");
         applyStyle(preview, "img", "display:block;max-width:100%;height:auto;margin:18px auto;border:0;");
         applyStyle(preview, "table", "width:100%;margin:16px auto 24px;border-collapse:collapse;font-size:13px;line-height:1.55;");
@@ -390,6 +390,14 @@ $$
           ADD_ATTR: ["data-math-block", "data-math-inline"],
         });
         preview.innerHTML = clean;
+
+        preview.querySelectorAll<HTMLElement>("code").forEach((code) => {
+          if (code.closest("pre")) return;
+          const inlineCode = document.createElement("span");
+          inlineCode.className = "inline-code";
+          inlineCode.textContent = code.textContent || "";
+          code.replaceWith(inlineCode);
+        });
 
         preview.querySelectorAll<HTMLElement>("[data-math-block]").forEach((node) => {
           const math = blocks[Number(node.dataset.mathBlock)];
@@ -510,17 +518,17 @@ $$
         saveState();
       };
 
-      const currentState = () => ({
+      const currentState = (includeTransientCover = true) => ({
         markdown: input.value,
         title: titleInput.value,
         author: authorInput.value,
         digest: digestInput.value,
         source: sourceInput.value,
-        caption: captionInput.value,
+        caption: includeTransientCover ? captionInput.value : "",
         accent: accentInput.value,
         theme: themeInput.value,
         linkMode: linkModeInput.value,
-        cover: coverPreview.src.startsWith("data:") ? coverPreview.src : "",
+        cover: includeTransientCover && coverPreview.src.startsWith("data:") ? coverPreview.src : "",
       });
 
       let saveTimer = 0;
@@ -528,25 +536,29 @@ $$
         $("#save-status").textContent = "保存中…";
         window.clearTimeout(saveTimer);
         saveTimer = window.setTimeout(() => {
-          localStorage.setItem(STORAGE, JSON.stringify(currentState()));
+          localStorage.setItem(STORAGE, JSON.stringify(currentState(false)));
           $("#save-status").textContent = "已保存到本机";
         }, 250);
       };
 
       const saved = JSON.parse(localStorage.getItem(STORAGE) || "null");
+      if (saved?.cover || saved?.caption) {
+        saved.cover = "";
+        saved.caption = "";
+        localStorage.setItem(STORAGE, JSON.stringify(saved));
+      }
       input.value = saved?.markdown || initial;
       titleInput.value = saved?.title || "未命名文章";
       authorInput.value = !saved?.author || saved.author === "付亚鹏" ? "Sencium" : saved.author;
       digestInput.value = saved?.digest || "";
       sourceInput.value = saved?.source || "";
-      captionInput.value = saved?.caption || captionInput.value;
+      captionInput.value = "";
       themeInput.value = saved?.theme || "ink";
       linkModeInput.value = saved?.linkMode || "text";
       accentInput.value = saved?.accent || themeColors[themeInput.value];
-      if (saved?.cover) {
-        coverPreview.src = saved.cover;
-        coverPreview.classList.add("is-visible");
-      }
+      coverInput.value = "";
+      coverPreview.removeAttribute("src");
+      coverPreview.classList.remove("is-visible");
 
       const readFileAsDataUrl = (file: File) => blobToDataUrl(file);
 
