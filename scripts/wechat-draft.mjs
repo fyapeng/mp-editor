@@ -46,16 +46,28 @@ const sourceUrl = valueArg("--source-url", "https://fyapeng.com/essays/optimal-t
 const coverCaption = valueArg("--cover-caption", "");
 let markdown = source.slice(frontmatterMatch?.[0].length || 0);
 
+const escapedDollarToken = `WECHAT_ESCAPED_DOLLAR_${crypto.randomUUID().replaceAll("-", "")}`;
+markdown = markdown.replace(/(^|[^\\])((?:\\\\)*)\\\$/g, (_, prefix, pairedBackslashes) => (
+  `${prefix}${pairedBackslashes}${escapedDollarToken}`
+));
+
 const formulas = [];
 markdown = markdown.replace(/\$\$([\s\S]*?)\$\$/g, (_, formula) => {
-  const index = formulas.push({ source: formula.trim(), display: true }) - 1;
+  const index = formulas.push({
+    source: formula.trim().replaceAll(escapedDollarToken, "\\$"),
+    display: true,
+  }) - 1;
   return `\n<div data-wechat-formula="${index}"></div>\n`;
 });
 
 markdown = markdown.replace(/\$([^$\n]+?)\$/g, (_, formula) => {
-  const index = formulas.push({ source: formula.trim(), display: false }) - 1;
+  const index = formulas.push({
+    source: formula.trim().replaceAll(escapedDollarToken, "\\$"),
+    display: false,
+  }) - 1;
   return `<span data-wechat-inline-formula="${index}"></span>`;
 });
+markdown = markdown.replaceAll(escapedDollarToken, "$");
 
 const texEscape = (formula) => formula.replaceAll("\\#", "\\#");
 const tex = String.raw`\documentclass{article}
@@ -75,16 +87,19 @@ await fs.writeFile(texPath, tex, "utf8");
 for (const name of await fs.readdir(formulaDir)) {
   if (/^formula-\d+\.png$/.test(name)) await fs.unlink(path.join(formulaDir, name));
 }
-const pdflatex = spawnSync("xelatex.exe", ["-interaction=nonstopmode", "-halt-on-error", `-output-directory=${formulaDir}`, texPath], { encoding: "utf8" });
-if (pdflatex.status !== 0) throw new Error(`公式编译失败：\n${pdflatex.stdout}\n${pdflatex.stderr}`);
-const pdfPath = path.join(formulaDir, "formulas.pdf");
 const formulaDpi = 300;
-const cairo = spawnSync("pdftocairo.exe", ["-png", "-r", String(formulaDpi), pdfPath, path.join(formulaDir, "formula")], { encoding: "utf8" });
-if (cairo.status !== 0) throw new Error(`公式转图片失败：\n${cairo.stdout}\n${cairo.stderr}`);
-const formulaFiles = (await fs.readdir(formulaDir))
-  .filter((name) => /^formula-\d+\.png$/.test(name))
-  .sort((a, b) => Number(a.match(/\d+/)?.[0]) - Number(b.match(/\d+/)?.[0]))
-  .map((name) => path.join(formulaDir, name));
+let formulaFiles = [];
+if (formulas.length > 0) {
+  const pdflatex = spawnSync("xelatex.exe", ["-interaction=nonstopmode", "-halt-on-error", `-output-directory=${formulaDir}`, texPath], { encoding: "utf8" });
+  if (pdflatex.status !== 0) throw new Error(`公式编译失败：\n${pdflatex.stdout}\n${pdflatex.stderr}`);
+  const pdfPath = path.join(formulaDir, "formulas.pdf");
+  const cairo = spawnSync("pdftocairo.exe", ["-png", "-r", String(formulaDpi), pdfPath, path.join(formulaDir, "formula")], { encoding: "utf8" });
+  if (cairo.status !== 0) throw new Error(`公式转图片失败：\n${cairo.stdout}\n${cairo.stderr}`);
+  formulaFiles = (await fs.readdir(formulaDir))
+    .filter((name) => /^formula-\d+\.png$/.test(name))
+    .sort((a, b) => Number(a.match(/\d+/)?.[0]) - Number(b.match(/\d+/)?.[0]))
+    .map((name) => path.join(formulaDir, name));
+}
 if (formulaFiles.length !== formulas.length) {
   throw new Error(`公式页数不一致：解析 ${formulas.length} 个，渲染 ${formulaFiles.length} 个`);
 }
