@@ -139,7 +139,7 @@ const styles = {
   td: "padding:8px 6px;border-bottom:1px solid #e2e5e3;color:#303633;text-align:left;vertical-align:top;",
   cover: "display:block;width:100%;max-width:677px;height:auto;margin:0 auto 5px;border:0;",
   caption: "margin:0 0 22px;color:#777e7a;font-size:11px;line-height:1.55;text-align:left;",
-  inlineCode: "display:inline;padding:1px 4px;border-radius:3px;background:#f0f2f1;color:#9a3d36;font-family:Consolas,'Courier New',monospace;font-size:13px;line-height:inherit;word-break:break-word;",
+  inlineCode: "display:inline;padding:1px 4px;border-radius:3px;background:#f0f2f1;color:#9a3d36;font-family:Consolas,'Courier New',monospace;font-size:13px;line-height:inherit;white-space:normal;word-break:break-all;overflow-wrap:anywhere;",
   namecard: "display:block;width:100%;max-width:677px;height:auto;margin:30px auto 0;border:0;",
 };
 html = html

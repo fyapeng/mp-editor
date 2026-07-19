@@ -361,7 +361,7 @@ $$
           const previous = divider.previousElementSibling as HTMLElement | null;
           if (previous) previous.style.marginBottom = "0";
         });
-        applyStyle(preview, ".inline-code", "display:inline;padding:1px 4px;border-radius:3px;background:#f0f2f1;color:#9a3d36;font-family:Consolas,'Courier New',monospace;font-size:13px;line-height:inherit;word-break:break-word;");
+        applyStyle(preview, ".inline-code", "display:inline;padding:1px 4px;border-radius:3px;background:#f0f2f1;color:#9a3d36;font-family:Consolas,'Courier New',monospace;font-size:13px;line-height:inherit;white-space:normal;word-break:break-all;overflow-wrap:anywhere;");
         applyStyle(preview, "pre", "margin:16px 0;padding:14px 16px;overflow-x:auto;background:#222725;color:#edf1ef;font-size:12px;line-height:1.65;border-radius:4px;white-space:pre-wrap;");
         applyStyle(preview, "img", "display:block;max-width:100%;height:auto;margin:18px auto;border:0;");
         applyStyle(preview, "table", "width:100%;margin:16px auto 24px;border-collapse:collapse;font-size:13px;line-height:1.55;");
