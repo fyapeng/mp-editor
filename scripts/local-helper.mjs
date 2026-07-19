@@ -116,6 +116,7 @@ const runDraft = async (payload) => {
     safeArg("digest", payload.digest),
     safeArg("source-url", payload.sourceUrl),
     safeArg("cover-caption", payload.coverCaption),
+    safeArg("accent", payload.accentColor),
     safeArg("update", payload.updateMediaId),
     payload.dryRun ? "--dry-run" : "",
   ].filter(Boolean);

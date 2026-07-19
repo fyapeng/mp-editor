@@ -44,6 +44,8 @@ const title = valueArg("--title", field("title") || "未命名文章");
 const digest = valueArg("--digest", "从配置与对偶出发，介绍最优运输的数学结构、计算方法及其在经济学中的应用。");
 const sourceUrl = valueArg("--source-url", "https://fyapeng.com/essays/optimal-transport-in-economics/");
 const coverCaption = valueArg("--cover-caption", "");
+const requestedAccent = valueArg("--accent", "#0b1015").trim();
+const accent = /^#[0-9a-f]{6}$/i.test(requestedAccent) ? requestedAccent : "#0b1015";
 let markdown = source.slice(frontmatterMatch?.[0].length || 0);
 
 const escapedDollarToken = `WECHAT_ESCAPED_DOLLAR_${crypto.randomUUID().replaceAll("-", "")}`;
@@ -117,7 +119,6 @@ for (const filePath of formulaFiles) {
 
 marked.setOptions({ gfm: true, breaks: false });
 let html = marked.parse(markdown, { async: false });
-const accent = "#0b1015";
 const divider = `<section style="display:block;margin:8px auto 2px;padding:0;color:${accent};text-align:center;font-size:10px;line-height:1;letter-spacing:1px;opacity:.7;"><span style="display:inline;">——&nbsp;&nbsp;◆&nbsp;&nbsp;——</span></section>`;
 html = html
   .replace(/<li>\s*<p>([\s\S]*?)<\/p>\s*<\/li>/g, "<li>$1</li>")
